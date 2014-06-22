@@ -1,0 +1,1 @@
+gcc -g NFA.h global.h constant.h typedef.h scan.h vector.h status_set.h hash_for_wrap.h nfa_to_dfa.h cmp.h exception.c printfunc.c scan.c vector.c status_set.c cmp.c nfa_to_dfa.c NFA.c hash_for_wrap.c main.c
