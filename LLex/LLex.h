@@ -59,7 +59,10 @@ void    generate_HeaderInfo( FILE *, char [] );
 /* 读取字符串，并且将所有正则表达式记录于Regexp_Info类型的数组中,
  * 将所有头定义信息填入char数组中 
  */
-void    ReadLexFile( char *, Regexp_Info [], char []);
+void    ReadLexFile( char *filename, Regexp_Info [], char HeaderDef[]);
+
+void    read_Regular_Action( FILE *f, Regexp_Info [] );
+
 
 /* Array[]是散列槽，有许多空位置，而clear_null_slot的用途就是将
  * Array[]中所有的非空槽写进newArray, 而此后不再检索某个特定的Regexp_Info
