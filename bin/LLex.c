@@ -25,7 +25,7 @@ void checkDFA_AND_text(
         wprintf(L"%ls doesn't match string %ls\n", regularExpression, normalText );
 }
 
-void    generate_FinalStatusJudge( FILE *f, Regexp_Info info )
+void    generate_FinalStatusJudge( FILE *f, MatchEntity info )
 {
     int i;
     fprintf(f,"static int FinalStatus_%s[]=\n{", info.name);
@@ -52,33 +52,38 @@ void    generate_HeaderInfo( FILE *f, char HeaderDef[] )
 }
 
 /* 生成状态转换表 */
-void    generate_T( FILE *f, Regexp_Info info )
+void    generate_T( FILE *f, MatchEntity ent )
 {
-    int i, j;
-    fprintf( f, "static int T_%s[][128]=\n",info.name );
+    int i, j, regex_index;
+    fprintf( f, "static int T_%s[][128]=\n",ent.name );
     fprintf( f,"{\n" );
     fprintf( f, "\t\t" );
-    for( i=0; i < info.entity->numOfStatus; i++ )
-    {
-        fprintf(f,"{ ");
-        for( j=0; j<128; j++ )
-        {
-            fprintf(f,"%d",info.entity->T[i][j]);
-            if( j<127 )
-                fprintf(f,", ");
-        }
-        fprintf(f,"}");
-        if( i < info.entity->numOfStatus-1 )
-            fprintf(f,",");
-        fprintf(f,"\n");
-    }
-    fprintf(f,"};\n");
-}
 
-void    generate_Recognize( FILE *f, Regexp_Info info )
+    for( regex_index=0; regex_index<ent.numOfRegexArray; regex_index++ )
+    {
+        if( ent.RegexArray[regex_index].dfa_entity == NULL )
+            continue;
+
+        for( i=0; i<ent.RegexArray[regex_index].dfa_entity->numOfStatus; i++ )
+        {
+            fprintf(f,"{ ");
+            for( j=0; j<128; j++ )
+            {
+                fprintf(f,"%d", ent.RegexArray[regex_index].dfa_entity->T[i][j]);
+                if( j<127 )
+                    fprintf(f,", ");
+            }
+            fprintf(f,"}");
+            if( i < ent.RegexArray[regex_index].dfa_entity->numOfStatus - 1 )
+                fprintf(f,",");
+            fprintf(f,"\n");
+        }
+        fprintf(f,"};\n");
+    }
+}   
+
+void    generate_concrete_Recognize( FILE *f, RegexInfo regex )
 {
-    char name[100];
-    strcpy( name, info.name );
     fprintf(f,"bool Recognize_for_%s( char * text)\n"
     "{\n"
     "    int i,length;                \n"
@@ -97,10 +102,28 @@ void    generate_Recognize( FILE *f, Regexp_Info info )
     "        return true;             \n"
     "    return false;                \n"
     "}                                \n"
-    ,name,name,name,name);
+    ,regex.name, regex.name, regex.name, regex.name
+    );
 }
 
-void    generate_Recognize_Act( FILE *f, Regexp_Info info)
+
+void    generate_MatchEntity_Recognize( FILE *f, MatchEntity match_entity )
+{
+    int i;
+
+    fprintf("int Recognize_for_%s(char *text)\n", match_entity.entityName);
+    fprintf("{\n");
+    fprintf("    if( ");
+    for( i=0; i<match_entity.numOfRegexArray; i++ )
+    {
+        if( match_
+        fprintf("Recognize_for_%s
+
+    }
+
+}
+
+void    generate_Recognize_Act( FILE *f, MatchEntity info)
 {
     char name[100];
     strcpy( name, info.name );
@@ -146,18 +169,27 @@ static int Hash_For_InfoArray_Index( char *str )
 }
 
 
-void ReadLexFile( char *filename, Regexp_Info RegexpInfoArray[], char HeaderDef[] )
+void ReadLexFile( char *filename, MatchEntity MatchEntArray[], char HeaderDef[] )
 {
     FILE    *f;
     char    c, last_c;
     char    ReadIn[100]; 
     xchar_t ReadIn2[100];
     char    buffer[3000];
+    char    RegExpNameBuffer[MAXLEN_REGEXP_NAME];
+    char    RegExpContentBuffer[MAXLEN_REGEXP]; 
+    int     RegExpContentBuffer_Size;
+    int     isReverseRegExp;
+    char    opBuffer[3];
+    int     RegExpNameBuffer_Size;
+    int     rExpIndex;
     int     _buff;
     int     size_headerDef;
-    int     Index;
+    int     Index, currentIndex;
     int     leftBracket;
     int     i, length;
+
+    MatchEntity currentEntity;
 
     int     numOfRegInfoArray;
 
@@ -204,34 +236,151 @@ void ReadLexFile( char *filename, Regexp_Info RegexpInfoArray[], char HeaderDef[
         /* 这里采用了哈希函数计算 索引值，对于碰撞问题采用 下一位平移的方法 */
         /* 声明哈希函数，接收字符串，计算出该串在 InfoArray中的索引 */
         int     Hash_For_InfoArray_Index( char * );
-        Index   =   Hash_For_InfoArray_Index( ReadIn );
+        currentIndex   =   Hash_For_InfoArray_Index( ReadIn );
 
-        while( RegexpInfoArray[ Index ].name != NULL )
-            Index ++;
+        /* 正则表达式表格中正则表达式的个数 */
+        numOfRegExp_In_MatchEntity = 0;
 
-        if( RegexpInfoArray[ Index ].name == NULL )
+        while( RegexpInfoArray[currentIndex].name != NULL )
+            /* 散列碰撞，寻找下一个位置 */
+            currentIndex ++;
+
+        if( RegexpInfoArray[currentIndex].name == NULL )
         {
             /* Insert */
-            RegexpInfoArray[ Index ].name = malloc(sizeof( ReadIn ));
-            strcpy( RegexpInfoArray[ Index ].name, ReadIn );
+            RegexpInfoArray[currentIndex].name = malloc(sizeof( ReadIn ));
+            strcpy( RegexpInfoArray[currentIndex].name, ReadIn );
         }
 
+        currentEntity = RegexpInfoArray[currentIndex];
+        currentEntity.numOf_rExp = 0;
         /* 读入正则表达式的内容 */
 
         fscanf(f,"%s",ReadIn);
         
-        /* RegularExpression采用双字节的宽字符 */
-        RegexpInfoArray[Index].RegularExpression = malloc( 2*sizeof( ReadIn ));
         for ( i=0; ReadIn[i]!='\0'; i++ )
-            RegexpInfoArray[Index].RegularExpression[i] = ReadIn[i]; 
+        {
+            if( ReadIn[i] == '{' )
+            {
+                i++;
+                RegExpNameBuffer_Size = 0;    
+                while(  ReadIn[i]!='}' )
+                {
+                    if( ReadIn[i]=='~' )
+                        isReverseRegExp = 1;
+                    else
+                        isReverseRegExp = 0;
 
-        RegexpInfoArray[Index].RegularExpression[i] = '\0';
-        //wcscpy( RegexpInfoArray[Index].RegularExpression, ReadIn2 );
+                    if( ReadIn[i]=='\0' )
+                    {
+                        printf("不合法的提取正则表达式命名方式：无}结尾\n");
+                        exit(1);
+                    }
+                    RegExpNameBuffer[ RegExpNameBuffer++ ] = ReadIn[i];
+                    i++;
+                }
+                if( ReadIn[i+1] == '\0' )
+                {
+                    strcpy(opBuffer,"0");
+                }
+                else if( ReadIn[i+1] == '|' )
+                {
+                    strcpy(opBuffer,"||");
+                    i++;  // 避免加入正则表达式内容 
+                }
+                else
+                {
+                    strcpy(opBuffer,"&&");
+                }
+
+                RegExpNameBuffer[ RegExpNameBuffer++ ] = '\0';
+                /* 寻找{ } 内指定的正则表达式名字，这个正则表达式
+                 * 必须在 之前出现 
+                 */
+                Index = Hash_For_InfoArray_Index( RegExpNameBuffer );
+
+                while( RegexpInfoArray[Index].name != NULL )
+                {
+                /* 避免散列值相同的名字 */
+                    if( strcpy( RegexpInfoArray[Index].name, RegExpNameBuffer )!=0 )
+                        Index++;
+                    else
+                        break;
+                }   
+            
+                if( RegexpInfoArray[Index].name == NULL )
+                {
+                    printf("不存在名为%s的正则表达式\n",RegExpNameBuffer);
+                    exit(1);
+                }
+                /* 为当前的正则表达式的 ExpTable中第 numOfRegExp_In_MatchEntity 个
+                 * 正则表达式分配空间
+                 */
+                currentEntity.ExpTable[ rExpIndex ][ 0 ] = 
+                                        malloc( sizeof(char)*strlen(RegExpNameBuffer) );
+                
+                /* 储存正则表达式名字 */
+                strcpy( 
+                        currentEntity.ExpTable[ rExpIndex ][ 0 ], 
+                        RegExpNameBuffer
+                    );
+                
+                /* 运算符的最大长度是2 */
+                currentEntity.ExpTable[ rExpIndex ][ 1 ] =
+                                        malloc(sizeof(char)*3);
+
+                strcpy( currentEntity.ExpTable[ rExpIndex ][ 1 ],
+                        opBuffer
+                    );
+
+                currentEntity.ExpTable[ rExpIndex ][ 2 ] =
+                                        malloc(sizeof(char)*2);
+                if( isReverseRegExp == 1 )
+                    strcpy( currentEntity.ExpTable[ rExpIndex ][ 1 ], "Y" );
+                else
+                    strcpy( currentEntity.ExpTable[numOfRegExp_In_MatchEntity][1], "N" );
+            }
+
+            else
+            {
+                RegExpContentBuffer_Size = 0;
+                while( ReadIn[i]!='\0' && ReadIn[i]!='{' )
+                {
+                    RegExpContentBuffer[ RegExpContentBuffer_Size++ ] = ReadIn[i];
+                }
+                if ( ReadIn[i-1]=='|' )
+                    RegExpContentBuffer[ --RegExpContentBuffer_Size ] = '\0';
+
+                currentEntity.rExpContentArray[ currentEntity.numOf_rExp] 
+                                        =  malloc( RegExpContentBuffer_Size );
+                /* 储存 带有内容的正则表达式 于数组中 */
+                strcpy( 
+                        currentEntity.rExpContentArray[ currentEntity.numOf_rExp ], 
+                        RegExpContentBuffer 
+                );
+
+                currentEntity.ExpTable[ rExpIndex ][ 0 ] =  
+                                            malloc( sizeof(char) * strlen(currentEntity.name));
+                strcpy( currentEntity.ExpTable[ rExpIndex ][0], currentEntity.name ); 
+                    
+                currentEntity.ExpTable[ rExpIndex ][ 1 ] = malloc( 2 );
+                /* 第二项储存的是索引 */
+                currentEntity.ExpTable[ rExpIndex ][ 1 ][ 0 ] = currentEntity.numOf_rExp;
+                currentEntity.ExpTable[ rExpIndex ][ 1 ][ 1 ] = '\0';
+
+                /* 第三项储存的是取正标志 */
+                currentEntity.ExpTable[ rExpIndex ][ 2 ] = malloc( 2 );
+                currentEntity.ExpTable[ rExpIndex ][ 2 ][ 0 ] = 'N';
+                currentEntity.ExpTable[ rExpIndex ][ 2 ][ 1 ] = '\0';
+
+            }
+        }
+
     }
     
     /* 对于%%的检测，先搁置 */
 
-    /* 记录所有正则表达式的匹配执行代码 */
+    /* 记录所有正则表达式对应名字的匹配执行代码 */
     while( fscanf(f,"%s",ReadIn) && strcmp(ReadIn, "%%")!=0 )
     {
         length = strlen(ReadIn);
@@ -240,7 +389,8 @@ void ReadLexFile( char *filename, Regexp_Info RegexpInfoArray[], char HeaderDef[
             ReadIn[length-1] = '\0';
             for( i=0; i<length-1; i++ )
                 ReadIn[i] = ReadIn[i+1];  
-        }else{
+        }
+        else{
             printf("格式错误（无}结尾）\n");
             exit(1);
         }
@@ -275,14 +425,13 @@ void ReadLexFile( char *filename, Regexp_Info RegexpInfoArray[], char HeaderDef[
         strcpy( RegexpInfoArray[ Index ].action, buffer ); 
 
     }
-
 }
 
 
 void 
 clear_null_slot( 
-                Regexp_Info Array[], 
-                Regexp_Info newArray[], 
+                MatchEntity Array[], 
+                MatchEntity newArray[], 
                 int *numOfArray 
             )
 {
@@ -302,20 +451,30 @@ clear_null_slot(
 }
 
 
-void construct_DFA( Regexp_Info Array[], int numOfArray )
+void construct_DFA( MatchEntity Array[], int numOfArray )
 {
     /* RegexpInfoArray是散列槽，故遍历整个可索引范围 */
     int i;
     for( i=0; i<numOfArray; i++ )
     {
-        Array[i].entity = malloc( sizeof( DFAEntity ));
-        isNullPointer( Array[i].entity );
+        for( j=0; j<Array[i].numOfRegexArray; j++ )
+        {
+            /* 对于匹配实体中每一个具体正则表达式构造DFA，以及转换表 */
+            Array[i].RegexArray[j].dfa_entity =
+                                        malloc(sizeof(struct DFAEntity));
 
-        Array[i].entity->dfa = Subset_Construct(
+            isNullPointer( Array[i].RegexArray[j].dfa_entity );
+
+            Array[i].RegexArray[i].dfa_entity -> dfa =
+                                        Subset_Construct(
                                             RegexpToNFA( Array[i].RegularExpression )
                                         );
-        Array[i].entity->T = makeUpDFATable( Array[i].entity->dfa );
-        Array[i].entity->numOfStatus = Array[i].entity->dfa->numOfStatus;
+
+            Array[i].RegexArray[i].dfa_entity -> T = 
+                                        makeUpDFATable( Array[i].entity->dfa );
+
+            Array[i].entity->numOfStatus = Array[i].entity->dfa->numOfStatus;
+        }
     }
 }
 
@@ -327,7 +486,7 @@ void generate_function_array( FILE *f, int numOfArray )
     fprintf(f,"int (*ptr[%d])( char* );\n",numOfArray);
 }
 
-void generate_all_recognize_functions( FILE *f, Regexp_Info Array[], int numOfArray )
+void generate_all_recognize_functions( FILE *f, MatchEntity Array[], int numOfArray )
 {
     int i;
     fprintf(f,"void set_functions_for_allfunctions( )\n");
@@ -351,7 +510,7 @@ static void generate_T_test( FILE *f, char *name )
 
 }
 
-static void generate_Recognize_detection( FILE *f, Regexp_Info R )
+static void generate_Recognize_detection( FILE *f, MatchEntity R )
 {
     if( !R.name || !R.RegularExpression )
         printf("正则表达式生成错误，无法生成识别函数。\n");
@@ -394,7 +553,7 @@ static void generate_RecognizeAct_detection( FILE *f, int numOfArray )
     );
 }
 
-void generate_everything( FILE *f, Regexp_Info Array[], int numOfArray, char HeaderDef[] )
+void generate_everything( FILE *f, MatchEntity Array[], int numOfArray, char HeaderDef[] )
 {
     int     i;
     generate_HeaderInfo( f, HeaderDef );
