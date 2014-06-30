@@ -20,6 +20,12 @@ typedef struct _regexp_info{
     xchar_t     *RegularExpression;
     char        *action;
     DFAEntity   *entity;
+
+    /* 构造储存所有字符串数组的数组，最多100个，其中每个字符串数组
+     * 有三个串，第一个串储存先前记录的正则表达式名字，第二个储存运算符
+     * 第三个储存是否取反的标记： Y/N
+     */
+    char        *ExpTable[100][3];     
 }Regexp_Info;
 
 
@@ -40,7 +46,6 @@ void    generate_FinalStatusJudge( FILE *, Regexp_Info );
  * T[i][j] 表示DFA的第i个状态，在字符j（ASCII值）下能转换到的状态号 
  */
 void    generate_T( FILE *, Regexp_Info );
-
 
 
 
