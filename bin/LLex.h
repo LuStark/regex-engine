@@ -50,6 +50,8 @@ typedef struct _match_entity{
 
     RegexInfo   RegexArray[100];
     int         numOfRegexArray;
+
+    char        op[100];    /* op[i]表示 Regex[i]和Regex[i+1]的连结符号： | & */
 }MatchEntity;
 
 
@@ -73,12 +75,33 @@ void    generate_T( FILE *, MatchEntity );
 
 
 
-/* 为MatchEntity中产生一个识别函数，该识别函数的原型是
+/* 为每个具体正则表达式产生一个识别函数，该识别函数的原型是
  * bool Recognize_for_%s( char *text ); 即对于任意串text，
  * 判别函数利用表T_%s（全局变量）执行一系列状态转换，若最终得到
  * 的状态是接受状态，Recognize_for_%s返回true 
  */
-void    generate_Recognize( FILE *, MatchEntity );
+void    generate_Concrete_Recognize( FILE *f, RegexInfo regex );
+
+/* 为每个识别实体产生一个识别函数，原型是bool Recognize_for_%s( char *text );
+ * 对于任意串text, 识别实体利用其储存的若干个正则表达式的逻辑运算进行综合：
+ * 例如:  FLOAT    (+|-)?{number}.{number}F
+ * 则 bool Recognize_for_FLOAT( char *text )
+ *    {
+ *         if( 
+                Recognize_for_FLOAT_concrete1( text ) &&
+                Recognize_for_number( text ) &&
+                Recognize_for_FLOAT_concrete2( text ) &&
+                Recognize_for_number( text ) &&
+                Recognize_for_FLOAT_concrete3( text )
+           )
+            {
+                ...
+            }
+      }
+ */
+void    generate_MatchEntity_Recognize( FILE *f, MatchEntity match_entity ); 
+
+
 
 /* 为MatchEntity产生识别和执行相应动作的函数 */
 void    generate_Recognize_Act( FILE *, MatchEntity );
