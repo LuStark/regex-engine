@@ -54,6 +54,30 @@ typedef struct _match_entity{
     char        op[100];    /* op[i]表示 Regex[i]和Regex[i+1]的连结符号： | & */
 }MatchEntity;
 
+/* 利用二叉树储存所有实体，实体的名字（entityName）作为关键码
+ * 小于关键码的作为左子结点，反之作为右子结点
+ */
+typedef struct _node {
+    char            *key;
+    MatchEntity     match_entity;
+    struct  _node   *lChild;
+    struct  _node   *rChild;
+}Node, *linkNode;
+
+/* 初始化“实体树”，返回根结点 */
+linkNode
+*Init_EntityTree( MatchEntity ent );
+
+/* 往树中插入实体, 若已存在该实体（名字相同），return false */
+bool
+Insert_EntTree( linkNode root, MatchEntity ent );
+
+/* 寻找给定名字的实体 */
+linkNode
+*Find( linkNode root, char *name );
+
+
+
 
 void    checkDFA_AND_text(
                         xchar_t *,
