@@ -25,18 +25,18 @@ void checkDFA_AND_text(
         wprintf(L"%ls doesn't match string %ls\n", regularExpression, normalText );
 }
 
-void    generate_FinalStatusJudge( FILE *f, RegexEntity info )
+void    generate_FinalStatusJudge( FILE *f, RegexEntity regex )
 {
     int i;
-    fprintf(f,"static int FinalStatus_%s[]=\n{", info.name);
-    for( i=0; i<info.entity->numOfStatus-1; i++ )
+    fprintf(f,"static int FinalStatus_%s[]=\n{", regex.name);
+    for( i=0; i<regex.dfa_entity->numOfStatus-1; i++ )
     {   
-        if( info.entity->dfa->Status[i]->FinalStatus == true )
+        if( regex.dfa_entity->dfa->Status[i]->FinalStatus == true )
             fprintf(f,"1, ");
         else
             fprintf(f,"0, ");
     }
-    if( info.entity->dfa->Status[i]->FinalStatus == true )
+    if( regex.dfa_entity->dfa->Status[i]->FinalStatus == true )
         fprintf(f,"1 }; \n");
     else
         fprintf(f,"0 }; \n");
@@ -51,7 +51,7 @@ void    generate_HeaderInfo( FILE *f, char HeaderDef[] )
     fprintf( f,"%s\n","#include <stdlib.h>");
 }
 
-/* 生成状态转换表 */
+/*
 void    generate_T( FILE *f, RegexEntity ent )
 {
     int i, j, regex_index;
@@ -133,12 +133,63 @@ void    generate_Recognize_Act( FILE *f, RegexEntity regex_entity)
         );
     }
 }
+*/
 
 
-static int
-ReadBraceContent( const char regexString[], int start_offset, char regexName )
+static int 
+ReadBraceContent(FILE *f,char recv[])
 {
+    int c;
+    int length, leftBracket;
     
+    leftBracket = 1;
+    length = 0;
+    while( (c=fgetc(f))!= '}' && leftBracket > 0 )
+    {
+        if( c=='{' )
+            leftBracket++;
+        else if( c=='}' )
+            leftBracket--;
+        recv[length++] = c;
+    }
+    recv[length++] = '\0';
+    return length;
+    /* strip */
+}
+
+static void 
+strip(char recv[])
+{
+    char buffer[100];
+    int i,j,count;
+    j = count = 0;
+    for( i=0; i<strlen(recv); i++ )
+    {
+        if(count==0 && recv[i]==' ')
+            continue;
+        if(count==1 && recv[i]==' ')
+            break;
+
+        count = 1;
+        buffer[j++] = recv[i];
+    }
+    buffer[j++] = '\0';
+    strcpy(recv,buffer);
+}
+
+static void 
+getString( FILE *f, char recv[] )
+{
+    int c;
+    int i;
+    while( (c=fgetc(f)) == ' ' ){}
+    
+    i = 0;
+    recv[i++] = c;
+
+    while( (c=fgetc(f)) != ' ' )
+        recv[i++] = c;
+    recv[i++] = '\0';
 
 }
 
@@ -149,11 +200,15 @@ ReadLexFile( char *filename, char HeaderDef[] )
     FILE    *f;
     char    c, last_c;
     char    ReadIn[100]; 
-    xchar_t ReadIn2[100];
-    xchar_t     regexBuffer[ MAXLEN_REGEXP ];
+    xchar_t     ReadIn2[100];
+    xchar_t     RegexBuff[ MAXLEN_REGEXP ],*A;
 
     char    buffer[3000];
     char    RegexNameBuff[MAXLEN_REGEXP_NAME];
+
+    char    RegexActionBuff[3000];
+    int     regexAction_length;
+
     char    RegExpContentBuffer[MAXLEN_REGEXP]; 
     int     RegExpContentBuffer_Size;
     int     isReverseRegExp;
@@ -164,15 +219,13 @@ ReadLexFile( char *filename, char HeaderDef[] )
     int     size_headerDef;
     int     Index, currentIndex;
     int     leftBracket;
-    int     i, length, regexName_length;
+    int     i, length, regexName_length, regex_length;
 
     linkNode    root, findnode;
     
     RegexEntity currRegexEntity;
 
     f = fopen(filename,"r");
-    /* 记录已读取的正则表达式的个数 */
-    numOfRegInfoArray = numOfRegexEntityArray = 0;
 
     /* 首先读取 %{ 以及 %}内的全局定义 */
     fscanf(f,"%s", ReadIn);
@@ -206,40 +259,49 @@ ReadLexFile( char *filename, char HeaderDef[] )
     }
 
     /* 记录每个正则表达式的命名以及式子 */
-    currRegexEntity.numOfRegexArray = 0;
-    while( fscanf(f,"%s",ReadIn) && strcmp(ReadIn, "%%")!=0 )
+    while( 1 )
     {
-        currRegexEntity.name = malloc( sizeof(char) * strlen(ReadIn) );
-        
+        getString( f, RegexNameBuff );
+        if( strcmp( RegexNameBuff, "%%" )==0 )
+            break;
+
+        currRegexEntity.name = malloc( sizeof(char) * strlen(RegexNameBuff) );
         isNullPointer( currRegexEntity.name );
         
-        fscanf(f,"%s",ReadIn);
-        wcscpy( regexBuffer, ReadIn );
-
-        for ( i=0; ReadIn[i]!='\0'; i++ )
+        regex_length = 0; 
+        while( (c=fgetc(f)) != ' ' )
         {
-            if( ReadIn[i] == '{' )
+            if( c == '{' )
             {
                 /* 寻找{ } 内指定的正则表达式名字 */
-                regexName_length = ReadBraceContent( ReadIn, i+1, RegexNameBuff );
-                findnode = Find( root, RegexNameBuff );
+                regexName_length = ReadBraceContent( f, RegexNameBuff );
+                findnode = FindEntNode( root, RegexNameBuff );
 
                 if( findnode != NULL )
                 {   
-                    /* 用正则表达式的内容 代替 {}内的命名 */
-                    replaceString( regexBuffer, 
-                                    i, 
-                                    i + regexName_length, 
-                                    getRegexFromNode( findnode )
-                                );
+                    A = getRegexFromNode( findnode );
+                    for( i=0; A[i]!='\0'; i++ )
+                        RegexBuff[ regex_length++ ] = A[i];
 
+                }else{
+                    RegexBuff[ regex_length++ ] = '{';
+                    for( i=0; RegexNameBuff[i]!='\0'; i++ )
+                        RegexBuff[ regex_length++ ] = RegexNameBuff[ i ];
+                    RegexBuff[ regex_length++ ] = '}';
                 }
-                i += regexName_length;
+
+            }else{
+                RegexBuff[ regex_length++ ] = c;        
             }
         }
+
+        currRegexEntity.regex = malloc( sizeof(xchar_t) * wcslen(RegexBuff) );
+        for( i=0; i<wcslen(RegexBuff); i++ )
+            currRegexEntity.regex[i] = RegexBuff[i];
+
         if( root == NULL )
         {
-            root = Insert_EntTree( currRegexEntity );
+            Insert_EntTree( root, currRegexEntity );
         }
         else if( Insert_EntTree(root, currRegexEntity) != true )
         {
@@ -254,66 +316,37 @@ ReadLexFile( char *filename, char HeaderDef[] )
      * 如   {digit}     { printf("DIGIT"); } 
 
      */
-    while( fscanf(f,"%s",ReadIn) && strcmp(ReadIn, "%%")!=0 )
+    while( 1 )
     {
-       
-        regexName_length = ReadBraceContent( ReadIn, 0, RegexNameBuff );
+        while( (c=fgetc(f)) != '{' );
+        regexName_length = ReadBraceContent( f, RegexNameBuff );
 
-        findnode = Find(root,RegexNameBuff);
-    
+        findnode = FindEntNode(root,RegexNameBuff);
         if( !findnode )
         {
             printf("不存在名为%s的正则表达式\n",RegexNameBuff);
             exit(1);
         }
+        while( (c=fgetc(f)) != '{' );
 
+        regexAction_length = ReadBraceContent( f, RegexActionBuff ); 
 
-        while( c!='{' )
-            c = fgetc(f);
-        
-        _buff = 0;
-        /* 左花括号存在则为1, 每遇到一个{, leftBracket++，遇到},leftBracket-- */
-        leftBracket = 1;
-        while( c=fgetc(f) )
-        {
-            if( c=='{' )
-                leftBracket++;
-            else if( c=='}' )
-                leftBracket--;
-
-            if( leftBracket == 0 )
-                break;
-            buffer[ _buff++ ] = c;
-        }
-        buffer[ _buff++ ] = '\0';
-
-        RegexpInfoArray[ Index ].action = malloc( sizeof(char)*_buff );
-        isNullPointer( RegexpInfoArray[ Index ].action );
+        findnode->regex_entity.action = malloc( sizeof(char)* regexAction_length );
+        isNullPointer( findnode->regex_entity.action );
 
         /* 将ActionBuff储存的代码插入到相应的位置 */
-        strcpy( RegexpInfoArray[ Index ].action, buffer ); 
-
+        strcpy( findnode->regex_entity.action, RegexActionBuff ); 
     }
 }
 
-static void 
-RecordRegexEntity( char *regexString, RegexEntity MatchEntArray[] )
-{
-
-
-
-}
-
-
+/*
 void construct_DFA( RegexEntity Array[], int numOfArray )
 {
-    /* RegexpInfoArray是散列槽，故遍历整个可索引范围 */
     int i;
     for( i=0; i<numOfArray; i++ )
     {
         for( j=0; j<Array[i].numOfRegexArray; j++ )
         {
-            /* 对于匹配实体中每一个具体正则表达式构造DFA，以及转换表 */
             Array[i].RegexArray[j].dfa_entity =
                                         malloc(sizeof(struct DFAEntity));
 
@@ -333,10 +366,8 @@ void construct_DFA( RegexEntity Array[], int numOfArray )
 }
 
 
-/* 定义一个指向bool (char* )的函数指针数组 */
 void generate_function_array( FILE *f, int numOfArray )
 {
-    /* numOfArray是正则表达式的实体数目 */
     fprintf(f,"int (*ptr[%d])( char* );\n",numOfArray);
 }
 
@@ -351,7 +382,6 @@ void generate_all_recognize_functions( FILE *f, RegexEntity Array[], int numOfAr
     }
     fprintf(f,"}\n");
 }
-
 
 void generate_everything( FILE *f, RegexEntity Array[], int numOfArray, char HeaderDef[] )
 {
@@ -374,14 +404,12 @@ void generate_everything( FILE *f, RegexEntity Array[], int numOfArray, char Hea
 
     generate_all_recognize_functions( f, Array, numOfArray );
     fprintf( f, "\n" );
-    /* 产生main函数 */
     fprintf(f,"int main(int argc, char *argv[])\n" 
     "{\n"
     "    char str[100];\n"
     "    FILE *inFile;\n"
     "    int    i;\n"
     );
-    /* “调用” set_functions_for_allfunctions函数 */
     fprintf(f,"    set_functions_for_allfunctions();\n");
     fprintf(f,"    if( argc==1 )\n"
     "    {\n");
@@ -410,3 +438,4 @@ void generate_everything( FILE *f, RegexEntity Array[], int numOfArray, char Hea
     "    }\n", numOfArray );
     fprintf(f,"}\n");
 }
+*/

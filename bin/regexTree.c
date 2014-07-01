@@ -1,9 +1,10 @@
 #include "LLex.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 linkNode
-*Init_EntityTree( MatchEntity ent )
+Init_EntityTree( RegexEntity ent )
 {
     linkNode root;
     
@@ -13,19 +14,19 @@ linkNode
         printf("内存分配失败!\n");
         exit(1);
     }
-    root->match_entity = ent;
-    root->key = malloc( sizeof(char) * ent.entityName );
+    root->regex_entity = ent;
+    root->key = malloc( sizeof(char) * strlen(ent.name) );
     if( !root->key ){
         printf("内存分配失败!\n");
         exit(1);
     }
-    strcpy( root->key, ent.entityName );
+    strcpy( root->key, ent.name );
 
     return root;
 }
 
 bool 
-Insert_EntTree( linkNode root, MatchEntity ent )
+Insert_EntTree( linkNode root, RegexEntity ent )
 {
     linkNode    p, q, newnode;
     int     cmpValue;
@@ -34,7 +35,7 @@ Insert_EntTree( linkNode root, MatchEntity ent )
     while( q )
     {
         p = q;
-        cmpValue = strcmp( ent.entityName, p->key );
+        cmpValue = strcmp( ent.name, p->key );
         if( cmpValue == -1 )
             q = p -> lChild;
         else if( cmpValue == 1 )
@@ -47,13 +48,13 @@ Insert_EntTree( linkNode root, MatchEntity ent )
         printf("内存分配失败!\n");
         exit(1);
     }
-    newnode -> key = malloc( sizeof(char) * ent.entityName );
+    newnode -> key = malloc( sizeof(char) * strlen(ent.name) );
     if( !newnode->key )
     {
         printf("内存分配失败!\n");
         exit(1);
     }
-    newnode.match_entity = ent;
+    newnode->regex_entity = ent;
 
     if( cmpValue == -1 )
         p -> lChild = newnode;
@@ -64,9 +65,10 @@ Insert_EntTree( linkNode root, MatchEntity ent )
 }
 
 linkNode
-*Find( linkNode root, char *name )
+FindEntNode( linkNode root, char *name )
 {
     linkNode    p,q;
+    int     cmpValue;
 
     q = p = root;
 
@@ -85,7 +87,7 @@ linkNode
 
 }
 
-xchar
+xchar_t
 *getRegexFromNode( const linkNode p )
 {
     if(!p){

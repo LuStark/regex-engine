@@ -16,7 +16,6 @@ int main(int argc, char *argv[])
 {
     int     numOfArray;
     FILE    *file_lexyyc;
-    Regexp_Info Array[MAXSIZE_HASH], newArray[MAXSIZE_HASH];
     char    HeaderDef[ HEADER_MAX ];
     char    fileName[100];
     file_lexyyc = fopen("lex.yy.c","w");
@@ -40,15 +39,14 @@ int main(int argc, char *argv[])
 
     }
 
-    ReadLexFile( fileName, Array, HeaderDef );
+    ReadLexFile( fileName, HeaderDef );
 
-    clear_null_slot( Array, newArray, &numOfArray );
 
-    construct_DFA( newArray, numOfArray );
+//    construct_DFA( newArray, numOfArray );
 
-    generate_everything( file_lexyyc, newArray, numOfArray, HeaderDef );
+//    generate_everything( file_lexyyc, newArray, numOfArray, HeaderDef );
 
-    fclose( file_lexyyc );
+//    fclose( file_lexyyc );
     //checkDFA_AND_text( L"#\\s*include\\s*<.+>", L"#include<stdio.h>" );
 
 }

@@ -29,16 +29,17 @@
  *             如 Comment     {%.*%}
  */
 
+
 typedef struct _regex_entity{
     char        *name;
     char        *action;
     xchar_t     *regex;
     DFAEntity   *dfa_entity;
 }RegexEntity;
-
 /* 利用二叉树储存所有实体，实体的名字（name）作为关键码
  * 小于关键码的作为左子结点，反之作为右子结点
  */
+
 typedef struct _node {
     char            *key;
     RegexEntity     regex_entity;
@@ -48,7 +49,7 @@ typedef struct _node {
 
 /* 初始化“实体树”，返回根结点 */
 linkNode
-*Init_EntityTree( RegexEntity ent );
+Init_EntityTree( RegexEntity ent );
 
 /* 往树中插入实体, 若已存在该实体（名字相同），return false */
 bool
@@ -56,9 +57,9 @@ Insert_EntTree( linkNode root, RegexEntity ent );
 
 /* 寻找给定名字的实体 */
 linkNode
-*Find( linkNode root, char *name );
+FindEntNode( linkNode root, char *name );
 
-xchar*
+xchar_t*
 getRegexFromNode( linkNode );
 
 
