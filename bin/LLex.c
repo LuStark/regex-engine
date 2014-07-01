@@ -165,9 +165,9 @@ strip(char recv[])
     j = count = 0;
     for( i=0; i<strlen(recv); i++ )
     {
-        if(count==0 && recv[i]==' ')
+        if(count==0 && (recv[i]==' '||recv[i]=='\n'))
             continue;
-        if(count==1 && recv[i]==' ')
+        if(count==1 && (recv[i]==' '||recv[i]=='\n'))
             break;
 
         count = 1;
@@ -182,12 +182,13 @@ getString( FILE *f, char recv[] )
 {
     int c;
     int i;
-    while( (c=fgetc(f)) == ' ' ){}
+    /* 忽略前面的空格和换行 */
+    while( (c=fgetc(f)) == ' ' || c=='\n' ){}
     
     i = 0;
     recv[i++] = c;
 
-    while( (c=fgetc(f)) != ' ' )
+    while( (c=fgetc(f)) != ' ' && c!='\n' )
         recv[i++] = c;
     recv[i++] = '\0';
 
@@ -267,14 +268,19 @@ ReadLexFile( char *filename, char HeaderDef[] )
 
         currRegexEntity.name = malloc( sizeof(char) * strlen(RegexNameBuff) );
         isNullPointer( currRegexEntity.name );
+        strcpy( currRegexEntity.name, RegexNameBuff );
         
         regex_length = 0; 
-        while( (c=fgetc(f)) != ' ' )
+        /* 跳过名字与正则式之间的空格 */
+        while( (c=fgetc(f)) == ' ' );
+
+        while( c!=' ' && c!='\n' )
         {
             if( c == '{' )
             {
                 /* 寻找{ } 内指定的正则表达式名字 */
                 regexName_length = ReadBraceContent( f, RegexNameBuff );
+                strip( RegexNameBuff );
                 findnode = FindEntNode( root, RegexNameBuff );
 
                 if( findnode != NULL )
@@ -289,19 +295,24 @@ ReadLexFile( char *filename, char HeaderDef[] )
                         RegexBuff[ regex_length++ ] = RegexNameBuff[ i ];
                     RegexBuff[ regex_length++ ] = '}';
                 }
-
-            }else{
+            }
+            else{
                 RegexBuff[ regex_length++ ] = c;        
             }
-        }
 
-        currRegexEntity.regex = malloc( sizeof(xchar_t) * wcslen(RegexBuff) );
-        for( i=0; i<wcslen(RegexBuff); i++ )
-            currRegexEntity.regex[i] = RegexBuff[i];
+            c = fgetc(f);
+        }
+        RegexBuff[ regex_length++ ] = '\0';
+    
+        currRegexEntity.regex = malloc( sizeof(xchar_t) * regex_length );
+        wcscpy( currRegexEntity.regex, RegexBuff );
+        //wprintf(L"%ls\n",currRegexEntity.regex);
+        //while(1){}
+
 
         if( root == NULL )
         {
-            Insert_EntTree( root, currRegexEntity );
+            root = Init_EntityTree( currRegexEntity );
         }
         else if( Insert_EntTree(root, currRegexEntity) != true )
         {
@@ -318,25 +329,56 @@ ReadLexFile( char *filename, char HeaderDef[] )
      */
     while( 1 )
     {
-        while( (c=fgetc(f)) != '{' );
-        regexName_length = ReadBraceContent( f, RegexNameBuff );
-
+        while( (c=fgetc(f))==' ' || c=='\n' );
+        if( c=='{' )
+        {
+            regexName_length = ReadBraceContent( f, RegexNameBuff );
+        }else{
+            if( c=='%' ){
+                if( (c=fgetc(f))=='%' ){
+                    break;
+                }else{
+                    printf("格式错误：无双%%\n");
+                    exit(1);
+                }
+            }else{
+                printf("格式错误：无%%结尾\n");
+                exit(1);
+            }
+        }
         findnode = FindEntNode(root,RegexNameBuff);
         if( !findnode )
         {
             printf("不存在名为%s的正则表达式\n",RegexNameBuff);
             exit(1);
         }
-        while( (c=fgetc(f)) != '{' );
 
-        regexAction_length = ReadBraceContent( f, RegexActionBuff ); 
+        while( (c=fgetc(f))==' ' || c=='\n' );
+        if( c=='{' )
+        {
+            regexAction_length = ReadBraceContent( f, RegexActionBuff ); 
 
-        findnode->regex_entity.action = malloc( sizeof(char)* regexAction_length );
-        isNullPointer( findnode->regex_entity.action );
-
-        /* 将ActionBuff储存的代码插入到相应的位置 */
-        strcpy( findnode->regex_entity.action, RegexActionBuff ); 
+            findnode->regex_entity.action = malloc( sizeof(char)* regexAction_length );
+            isNullPointer( findnode->regex_entity.action );
+            /* 将ActionBuff储存的代码插入到相应的位置 */
+            strcpy( findnode->regex_entity.action, RegexActionBuff ); 
+        }
+        else{
+            if( c=='%' ){
+                if( (c=fgetc(f))=='%' ){
+                    break;
+                }else{
+                    printf("格式错误：无双%%\n");
+                    exit(1);
+                }
+            }else{
+                printf("格式错误：无%%结尾\n");
+                exit(1);
+            }
+        }
     }
+
+    return root;
 }
 
 /*
