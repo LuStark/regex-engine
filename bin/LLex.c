@@ -51,38 +51,31 @@ void    generate_HeaderInfo( FILE *f, char HeaderDef[] )
     fprintf( f,"%s\n","#include <stdlib.h>");
 }
 
-/*
 void    generate_T( FILE *f, RegexEntity ent )
 {
-    int i, j, regex_index;
-    fprintf( f, "static int T_%s[][128]=\n",ent.name );
+    int i, j;
+    fprintf( f, "static int T_%s[][128]=\n", ent.name );
     fprintf( f,"{\n" );
     fprintf( f, "\t\t" );
 
-    for( regex_index=0; regex_index<ent.numOfRegexArray; regex_index++ )
+    for( i=0; i<ent.dfa_entity->numOfStatus; i++ )
     {
-        if( ent.RegexArray[regex_index].dfa_entity == NULL )
-            continue;
-
-        for( i=0; i<ent.RegexArray[regex_index].dfa_entity->numOfStatus; i++ )
+        fprintf(f,"{ ");
+        for( j=0; j<128; j++ )
         {
-            fprintf(f,"{ ");
-            for( j=0; j<128; j++ )
-            {
-                fprintf(f,"%d", ent.RegexArray[regex_index].dfa_entity->T[i][j]);
-                if( j<127 )
-                    fprintf(f,", ");
-            }
-            fprintf(f,"}");
-            if( i < ent.RegexArray[regex_index].dfa_entity->numOfStatus - 1 )
-                fprintf(f,",");
-            fprintf(f,"\n");
+            fprintf(f,"%d", ent.dfa_entity->T[i][j]);
+            if( j<127 )
+                fprintf(f,", ");
         }
-        fprintf(f,"};\n");
+        fprintf(f,"}");
+        if( i < ent.dfa_entity->numOfStatus - 1 )
+            fprintf(f,",");
+        fprintf(f,"\n");
     }
+    fprintf(f,"};\n");
 }   
 
-void    generate_Regex_Recognize( FILE *f, RegexEntity regex_entity )
+void    generate_Recognize( FILE *f, RegexEntity regex_entity )
 {
     fprintf(f,"bool Recognize_for_%s( char * text)\n"
     "{\n"
@@ -133,7 +126,6 @@ void    generate_Recognize_Act( FILE *f, RegexEntity regex_entity)
         );
     }
 }
-*/
 
 
 static int 
@@ -332,7 +324,8 @@ ReadLexFile( char *filename, char HeaderDef[] )
         while( (c=fgetc(f))==' ' || c=='\n' );
         if( c=='{' )
         {
-            regexName_length = ReadBraceContent( f, RegexNameBuff );
+            ReadBraceContent( f, RegexNameBuff );
+            strip(RegexNameBuff);
         }else{
             if( c=='%' ){
                 if( (c=fgetc(f))=='%' ){
@@ -349,6 +342,7 @@ ReadLexFile( char *filename, char HeaderDef[] )
         findnode = FindEntNode(root,RegexNameBuff);
         if( !findnode )
         {
+            printf("%d\n",strlen(RegexNameBuff));
             printf("不存在名为%s的正则表达式\n",RegexNameBuff);
             exit(1);
         }
@@ -377,36 +371,28 @@ ReadLexFile( char *filename, char HeaderDef[] )
             }
         }
     }
-
     return root;
 }
 
-/*
 void construct_DFA( RegexEntity Array[], int numOfArray )
 {
     int i;
     for( i=0; i<numOfArray; i++ )
     {
-        for( j=0; j<Array[i].numOfRegexArray; j++ )
-        {
-            Array[i].RegexArray[j].dfa_entity =
-                                        malloc(sizeof(struct DFAEntity));
+        Array[i].dfa_entity = malloc(sizeof(DFAEntity));
 
-            isNullPointer( Array[i].RegexArray[j].dfa_entity );
+        isNullPointer( Array[i].dfa_entity );
 
-            Array[i].RegexArray[i].dfa_entity -> dfa =
-                                        Subset_Construct(
-                                            RegexpToNFA( Array[i].RegularExpression )
+        Array[i].dfa_entity -> dfa = Subset_Construct(
+                                            RegexpToNFA( Array[i].regex )
                                         );
 
-            Array[i].RegexArray[i].dfa_entity -> T = 
-                                        makeUpDFATable( Array[i].entity->dfa );
+        Array[i].dfa_entity -> T = makeUpDFATable( Array[i].dfa_entity->dfa );
 
-            Array[i].entity->numOfStatus = Array[i].entity->dfa->numOfStatus;
-        }
+        Array[i].dfa_entity->numOfStatus = Array[i].dfa_entity->dfa->numOfStatus;
+        
     }
 }
-
 
 void generate_function_array( FILE *f, int numOfArray )
 {
@@ -424,6 +410,63 @@ void generate_all_recognize_functions( FILE *f, RegexEntity Array[], int numOfAr
     }
     fprintf(f,"}\n");
 }
+
+
+static void generate_T_test( FILE *f, char *name )
+{
+    fprintf(f,
+    "\tprintf(\"构建正则表达式%s的转换表测试。\\n\");\n"
+    "\twhile( scanf(\"%%d, %%c\", &i, &c)!=EOF )\n"
+    "\t{\n"
+    "\t\tprintf(\"%%d\\n\",T_%s[i][c]);\n"
+    "\t}\n", name, name
+    );
+
+}
+
+static void generate_Recognize_detection( FILE *f, RegexEntity ent )
+{
+    if( !ent.name || !ent.regex )
+        printf("正则表达式生成错误，无法生成识别函数。\n");
+
+    fprintf(f,
+    "    printf(\"检测Recognize_for_%s函数\\n>>  \");\n"
+    "    while( scanf(\"%%s\",str) != EOF )\n"
+    "    {\n"
+    "        if( Recognize_for_%s(str) )\n"
+    "        {\n"
+    "            printf(\"%%s 匹配正则表达式 %%s\\n\", str, \"%ls\" );\n"
+    "        }\n"
+    "        else\n"
+    "        {\n"
+    "            printf(\"%%s 不匹配正则表达式 %%s\\n\", str, \"%ls\" );\n"
+    "        }\n"
+    "        printf(\">>  \");\n"
+    "    }\n",
+    ent.name, ent.name, ent.regex, ent.regex
+    ); 
+}
+
+static void generate_RecognizeAct_detection( FILE *f, int numOfArray )
+{
+    fprintf(f,
+    "\t    printf(\">>>  \");\n"
+    "\t    while( scanf(\"%%s\", str) != EOF )\n"
+    "\t    {\n"
+    "\t        for( i=0; i<%d; i++ )\n"
+    "\t        {\n"
+    "\t            if( ptr[i](str) )\n"
+    "\t            {\n"
+    "\t                printf(\"\\n\");\n"
+    "\t                break;\n"
+    "\t            }\n"
+    "\t        }\n"
+    "\t        printf(\">>>  \");\n"
+    "\t    }\n",
+    numOfArray
+    );
+}
+
 
 void generate_everything( FILE *f, RegexEntity Array[], int numOfArray, char HeaderDef[] )
 {
@@ -446,12 +489,14 @@ void generate_everything( FILE *f, RegexEntity Array[], int numOfArray, char Hea
 
     generate_all_recognize_functions( f, Array, numOfArray );
     fprintf( f, "\n" );
+    /* 产生main函数 */
     fprintf(f,"int main(int argc, char *argv[])\n" 
     "{\n"
     "    char str[100];\n"
     "    FILE *inFile;\n"
     "    int    i;\n"
     );
+    /* “调用” set_functions_for_allfunctions函数 */
     fprintf(f,"    set_functions_for_allfunctions();\n");
     fprintf(f,"    if( argc==1 )\n"
     "    {\n");
@@ -480,4 +525,28 @@ void generate_everything( FILE *f, RegexEntity Array[], int numOfArray, char Hea
     "    }\n", numOfArray );
     fprintf(f,"}\n");
 }
-*/
+
+void StoreInList( linkNode root, RegexEntity Array[], int *numOfArray )
+{
+    linkNode    Stack[200], p;
+    int         top;
+
+    top = 0;
+
+    p = root;
+
+    while( p || top>0 )
+    {
+        if( p )
+        {   
+            Stack[top++] = p;
+            p = p->lChild;
+        }
+        else
+        {
+            p = Stack[--top];
+            Array[ (*numOfArray)++ ] = p->regex_entity;
+            p = p->rChild;
+        }
+    }
+}
