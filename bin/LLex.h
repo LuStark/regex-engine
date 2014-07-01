@@ -87,7 +87,7 @@ void    generate_T( FILE *, RegexEntity );
  * 判别函数利用表T_%s（全局变量）执行一系列状态转换，若最终得到
  * 的状态是接受状态，Recognize_for_%s返回true 
  */
-void    generate_Regex_Recognize( FILE *f, RegexEntity regex_entity ); 
+void    generate_Recognize( FILE *f, RegexEntity regex_entity ); 
 
 
 
