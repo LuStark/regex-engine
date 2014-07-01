@@ -8,4 +8,6 @@
 #define MAXNUM_STATES  250
 #define MAXNUM_EDGES   500 
 
+#define MAXLEN_REGEXP_NAME 30
+
 #endif
