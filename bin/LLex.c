@@ -77,26 +77,42 @@ void    generate_T( FILE *f, RegexEntity ent )
 
 void    generate_Recognize( FILE *f, RegexEntity regex_entity )
 {
-    fprintf(f,"bool Recognize_for_%s( char * text)\n"
+    fprintf(f,"int Recognize_for_%s( char * text)\n"
     "{\n"
-    "    int i, length, t;            \n"
-    "    char c;                      \n"
-    "    length = strlen( text );     \n"
+    "    int match_length, has_matched, t;            \n"
+    "    char *p, c;                      \n"
+    "    match_length = 0;\n"
     "\n"
-    "    i = 0;                       \n"
-    "    while( (c=(*text++))!='\\0' )\n"
-    "    {                            \n"
-    "        t = T_%s[i][c];          \n"
-    "        if( t == -1 )            \n"
-    "            return false;        \n"
-    "        else                     \n"
-    "            i = t;                 \n"
+    "    t = 0;\n"
+    "    p = text;\n"
+    "    has_matched = 0;\n"
+    "    while( (*p)!='\\0' )\n"
+    "    {\n"
+    "        t = T_%s[t][*p];\n"
+    "        if( t == -1 )\n"
+    "        {\n"
+    "            if( has_matched )\n"
+    "            {\n"
+    "                return match_length;\n"
+    "            }\n"
+    "            else\n"
+    "                return -1;\n"
+    "        }\n"
+    "        else\n"
+    "        {\n"
+    "            match_length++;\n"
+    "            if( FinalStatus_%s[t]==true )\n"
+    "                has_matched = 1;\n"
+    "        }\n"
     "    }                            \n"
-    "    if( FinalStatus_%s[i]==true )             \n"
-    "        return true;             \n"
-    "    return false;                \n"
+    "    if( FinalStatus_%s[t]==true )             \n"
+    "        return match_length;             \n"
+    "    return -1;                \n"
     "}                                \n"
-    ,regex_entity.name, regex_entity.name, regex_entity.name
+    ,regex_entity.name, 
+    regex_entity.name, 
+    regex_entity.name,
+    regex_entity.name
     );
 }
 
@@ -104,7 +120,7 @@ void    generate_Recognize_Act( FILE *f, RegexEntity regex_entity)
 {
     if( !regex_entity.action )
     {
-        fprintf(f,"int RecognizeAndAct_for_%s(char *text)\n"
+        fprintf(f,"int RecognizeAndAct_for_%s( )\n"
         "{\n"
         "    return 0;\n"
         "}\n"
@@ -113,16 +129,16 @@ void    generate_Recognize_Act( FILE *f, RegexEntity regex_entity)
     }
     else
     {
-        fprintf(f,"int RecognizeAndAct_for_%s( char * text)\n"
+        fprintf(f,"int RecognizeAndAct_for_%s( )\n"
         "{\n"
-        "    if( Recognize_for_%s( text ) == true )\n"
+        "    if( true )\n"
         "    {\n"
         "        %s\n"
         "        return 1;\n"
         "    }\n"
         "    return 0;\n"
         "}\n"
-        , regex_entity.name, regex_entity.name, regex_entity.action
+        , regex_entity.name, regex_entity.action
         );
     }
 }
@@ -219,6 +235,11 @@ ReadLexFile( char *filename, char HeaderDef[] )
     RegexEntity currRegexEntity;
 
     f = fopen(filename,"r");
+    if( f==NULL )
+    {
+        printf("不存在名为%s的文件。\n", filename );
+        exit(1);
+    }
 
     /* 首先读取 %{ 以及 %}内的全局定义 */
     fscanf(f,"%s", ReadIn);
@@ -396,7 +417,8 @@ void construct_DFA( RegexEntity Array[], int numOfArray )
 
 void generate_function_array( FILE *f, int numOfArray )
 {
-    fprintf(f,"int (*ptr[%d])( char* );\n",numOfArray);
+    fprintf(f,"int  (*ptr[%d])( char* );\n", numOfArray);
+    fprintf(f,"int  (*ptr_action[%d])( );\n", numOfArray);
 }
 
 void generate_all_recognize_functions( FILE *f, RegexEntity Array[], int numOfArray )
@@ -406,7 +428,8 @@ void generate_all_recognize_functions( FILE *f, RegexEntity Array[], int numOfAr
     fprintf(f,"{\n");
     for( i=0; i<numOfArray; i++ )
     {
-        fprintf(f,"    ptr[%d] = RecognizeAndAct_for_%s;\n", i, Array[i].name );
+        fprintf(f,"    ptr[%d] = Recognize_for_%s;\n", i, Array[i].name );
+        fprintf(f,"    ptr_action[%d] = RecognizeAndAct_for_%s;\n", i, Array[i].name );
     }
     fprintf(f,"}\n");
 }
@@ -467,11 +490,101 @@ static void generate_RecognizeAct_detection( FILE *f, int numOfArray )
     );
 }
 
+void generate_scan( FILE *f )
+{
+    fprintf(f,
+    "void scan(char *filename)\n"
+    "{\n"
+    "    char    Program[3000];\n"
+    "    FILE    *f;\n"
+    "    int     i = 0, c, scanPos, regexID, matchLen;\n"
+    "\n"
+    "    f = fopen(filename, \"r\");\n"
+    "    if( !f ){\n"
+    "        printf(\"文件无法打开。\\n\");"
+    "    exit(1);\n"
+    "    }\n"
+    "    while( (c=fgetc(f)) != EOF )\n"
+    "    {\n"
+    "        if( c=='\\n' )\n"
+    "        {\n"
+    "            c = fgetc(f);\n"
+    "            if( c!=EOF )\n"
+    "                ungetc(c,f);\n"
+    "            else\n"
+    "                break;\n"
+    "        }\n"
+    "        Program[i++] = c;\n"
+    "    }\n"
+    "    Program[i++] = '\\0';\n"
+    "\n"
+    "    scanPos = 0;\n"
+    "    while( Program[scanPos]!='\\0' )\n"
+    "    {\n"
+    "        for( i = 0; i < numOfRegex; i++ )\n"
+    "        {\n"
+    "            matchlength_for_regex[i] = ptr[i]( Program + scanPos );\n"
+    "        }\n"
+    "        regexID = FindMaxIndex( matchlength_for_regex, numOfRegex );\n"
+    "        if( (matchLen = matchlength_for_regex[regexID]) > 0 )\n"
+    "        {\n"
+    "            ptr_action[regexID]();\n"
+    "        }else{\n"
+    "            printf(\"无法向下分析.\\n\");\n"
+    "            exit(1);\n"
+    "        }\n"
+    "        scanPos += matchLen;\n"
+    "    }\n"
+    "}\n");
+}
+
+void generate_global_variable( FILE *f, int numOfRegex )
+{
+    fprintf(f,
+        "#define    numOfRegex  %d\n"
+        "int    matchlength_for_regex[numOfRegex];\n",
+        numOfRegex
+        );
+
+}
+
+void generate_help_function( FILE *f )
+{
+    fprintf(f,
+    "int FindMaxIndex( int A[], int n )\n"
+    "{\n"
+    "    int max_i;\n"
+    "    int max;\n"
+    "\n"
+    "    int i;\n"
+    "\n"
+    "    max = -1;\n"
+    "    max_i = 0;\n"
+    "    for( i=0; i<n; i++ )\n"
+    "    {\n"
+    "        if( A[i]>max )\n"
+    "        {\n"
+    "            max = A[i];\n"
+    "            max_i = i;\n"
+    "        }\n"
+    "    }\n"
+    "    return max_i;\n"
+    "}\n"
+    );
+}
 
 void generate_everything( FILE *f, RegexEntity Array[], int numOfArray, char HeaderDef[] )
 {
     int     i;
     generate_HeaderInfo( f, HeaderDef );
+    fprintf(f,"\n");
+    generate_global_variable( f, numOfArray );
+    fprintf(f,"\n");
+    generate_help_function( f );
+    fprintf(f,"\n");
+    generate_function_array( f, numOfArray );
+    fprintf(f,"\n");
+
     fprintf(f,"\n");
     for( i=0; i<numOfArray; i++ )
     {
@@ -484,46 +597,19 @@ void generate_everything( FILE *f, RegexEntity Array[], int numOfArray, char Hea
         generate_Recognize_Act( f, Array[i] );
         fprintf(f,"\n");
     }
-    generate_function_array( f, numOfArray );
     fprintf( f, "\n" );
-
     generate_all_recognize_functions( f, Array, numOfArray );
+    fprintf( f, "\n" );
+    generate_scan( f );
     fprintf( f, "\n" );
     /* 产生main函数 */
     fprintf(f,"int main(int argc, char *argv[])\n" 
     "{\n"
-    "    char str[100];\n"
-    "    FILE *inFile;\n"
-    "    int    i;\n"
+    "    set_functions_for_allfunctions();\n"
+    "    scan(\"program.txt\");\n"
+    "    printf(\"\\n\");\n"
+    "}\n"
     );
-    /* “调用” set_functions_for_allfunctions函数 */
-    fprintf(f,"    set_functions_for_allfunctions();\n");
-    fprintf(f,"    if( argc==1 )\n"
-    "    {\n");
-    generate_RecognizeAct_detection( f, numOfArray );
-    fprintf(f,"    }\n");
-    fprintf(f,"    else\n"
-    "    {\n"
-    "        inFile = fopen(argv[1],\"r\");\n"
-    "        if( !inFile )\n"
-    "        {\n"
-    "            printf(\"无法打开待识别文件。\\n\");\n"
-    "            exit(1);\n"
-    "        }\n"
-    "        while( fscanf(inFile,\"%%s\",str) != EOF )\n"
-    "        {\n"
-    "            for( i=0; i<%d; i++ )\n"
-    "            {\n"
-    "                if( ptr[i](str) )\n"
-    "                {\n"
-    "                    printf(\" \");\n"
-    "                    break;\n"
-    "                }\n"
-    "            }\n"
-    "        }\n"
-    "        printf(\"\\n\");\n"
-    "    }\n", numOfArray );
-    fprintf(f,"}\n");
 }
 
 void StoreInList( linkNode root, RegexEntity Array[], int *numOfArray )
