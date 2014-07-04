@@ -104,6 +104,7 @@ void    generate_Recognize( FILE *f, RegexEntity regex_entity )
     "            if( FinalStatus_%s[t]==true )\n"
     "                has_matched = 1;\n"
     "        }\n"
+    "        p++;\n"
     "    }                            \n"
     "    if( FinalStatus_%s[t]==true )             \n"
     "        return match_length;             \n"
@@ -152,7 +153,7 @@ ReadBraceContent(FILE *f,char recv[])
     
     leftBracket = 1;
     length = 0;
-    while( (c=fgetc(f))!= '}' && leftBracket > 0 )
+    while( (c=fgetc(f))!= '}' && c!='\n' && leftBracket > 0 )
     {
         if( c=='{' )
             leftBracket++;
@@ -160,6 +161,8 @@ ReadBraceContent(FILE *f,char recv[])
             leftBracket--;
         recv[length++] = c;
     }
+    if( c=='\n' || c=='}' )
+        ungetc( c, f );
     recv[length++] = '\0';
     return length;
     /* strip */
@@ -301,12 +304,12 @@ ReadLexFile( char *filename, char HeaderDef[] )
                     A = getRegexFromNode( findnode );
                     for( i=0; A[i]!='\0'; i++ )
                         RegexBuff[ regex_length++ ] = A[i];
-
+                    c = fgetc(f);
+                    
                 }else{
                     RegexBuff[ regex_length++ ] = '{';
                     for( i=0; RegexNameBuff[i]!='\0'; i++ )
                         RegexBuff[ regex_length++ ] = RegexNameBuff[ i ];
-                    RegexBuff[ regex_length++ ] = '}';
                 }
             }
             else{
@@ -340,9 +343,10 @@ ReadLexFile( char *filename, char HeaderDef[] )
      * 如   {digit}     { printf("DIGIT"); } 
 
      */
+    RegexNameBuff[0] = '\0';
     while( 1 )
     {
-        while( (c=fgetc(f))==' ' || c=='\n' );
+        while( (c=fgetc(f))==' ' || c=='\n' || c=='}' );
         if( c=='{' )
         {
             ReadBraceContent( f, RegexNameBuff );
@@ -368,7 +372,7 @@ ReadLexFile( char *filename, char HeaderDef[] )
             exit(1);
         }
 
-        while( (c=fgetc(f))==' ' || c=='\n' );
+        while( (c=fgetc(f))==' ' || c=='\n' || c=='}' );
         if( c=='{' )
         {
             regexAction_length = ReadBraceContent( f, RegexActionBuff ); 
@@ -497,7 +501,7 @@ void generate_scan( FILE *f )
     "{\n"
     "    char    Program[3000];\n"
     "    FILE    *f;\n"
-    "    int     i = 0, c, scanPos, regexID, matchLen;\n"
+    "    int     i = 0, c, nextc, scanPos, regexID, matchLen;\n"
     "\n"
     "    f = fopen(filename, \"r\");\n"
     "    if( !f ){\n"
@@ -508,9 +512,9 @@ void generate_scan( FILE *f )
     "    {\n"
     "        if( c=='\\n' )\n"
     "        {\n"
-    "            c = fgetc(f);\n"
-    "            if( c!=EOF )\n"
-    "                ungetc(c,f);\n"
+    "            nextc = fgetc( f );\n"
+    "            if( nextc != EOF )\n"
+    "                ungetc( nextc, f);\n"
     "            else\n"
     "                break;\n"
     "        }\n"
@@ -533,6 +537,7 @@ void generate_scan( FILE *f )
     "            printf(\"无法向下分析.\\n\");\n"
     "            exit(1);\n"
     "        }\n"
+    "        for( i=0; i<numOfRegex; i++ ) matchlength_for_regex[i]=0;\n"
     "        scanPos += matchLen;\n"
     "    }\n"
     "}\n");
