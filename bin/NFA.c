@@ -585,9 +585,15 @@ xchar_t
 
         buffer[ sizeOfBuffer++ ] = currch;
         
-        tcode   =   hasLinkBetween(currch,nextch);
+        tcode = hasLinkBetween( currch, nextch );
 
-        if( state&2!=2 && tcode==-1 ){
+        if( (state&2) == 2 )
+        {
+            /* currch是被转义字符 */
+            tcode   =   hasLinkBetween(0,nextch);
+        }
+
+        if( (state&2)!=2 && tcode==-1 ){
             return NULL;
         }
 
@@ -597,7 +603,7 @@ xchar_t
             /* state&2==2表明是转义字符(curr被转义), 所以视为普通字符 
              * 若普通字符（这里以'a'代替） 与 nextch 在判断表中为1,可加&
              */
-            if( tcode==1 || (state&2==2 && LinkExist['a'][nextch]==1) )
+            if( tcode==1 || ((state&2)==2 && LinkExist['a'][nextch]==1) )
             {
                 buffer[ sizeOfBuffer++ ] = '&';
                 /* 清空第2位 */
@@ -741,6 +747,9 @@ NFA *RegexpToNFA( xchar_t *regExp )
                         newnfa = CreateOneNFA( ' ' );
                         newnfa2= CreateOneNFA( '\t' );
                         newnfa = Union( newnfa, newnfa2 );
+                        break;
+                case 'n':
+                        newnfa = CreateOneNFA('\n');
                         break;
                 default:
                         newnfa = CreateOneNFA( ch );
