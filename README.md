@@ -1,3 +1,7 @@
 simpleLex
 =========
-simpleLex是一个模仿Flex/Lex词法分析程序自动生成的小玩具。
+1. simpleLex是什么？
+-------------------------
+2. simpleLex可以干啥?
+-------------------------
+3. simpleLex的功能展示
