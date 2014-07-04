@@ -18,6 +18,8 @@ int main(int argc, char *argv[])
     FILE    *file_lexyyc;
     char    HeaderDef[ HEADER_MAX ];
     char    fileName[100];
+    RegexEntity     Array[200];
+
     file_lexyyc = fopen("lex.yy.c","w");
     
     if( !file_lexyyc )
@@ -34,19 +36,22 @@ int main(int argc, char *argv[])
             printf("字符串长度超过额定限制，退出。\n");
             exit(1);
         }
-    }else{
+    }
+    else
+    {
         strcpy( fileName, argv[1] );
-
     }
 
-    ReadLexFile( fileName, HeaderDef );
+    linkNode root = ReadLexFile( fileName, HeaderDef );
 
+    numOfArray = 0;
+    StoreInList( root, Array, &numOfArray );
 
-//    construct_DFA( newArray, numOfArray );
+    construct_DFA( Array, numOfArray );
 
-//    generate_everything( file_lexyyc, newArray, numOfArray, HeaderDef );
+    generate_everything( file_lexyyc, Array, numOfArray, HeaderDef );
 
-//    fclose( file_lexyyc );
+    fclose( file_lexyyc );
     //checkDFA_AND_text( L"#\\s*include\\s*<.+>", L"#include<stdio.h>" );
 
 }
