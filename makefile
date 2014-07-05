@@ -42,5 +42,4 @@ clean:
 	rm $(objects)
 
 install:
-	rm $(objects)
 	mv simpleLex /usr/bin
