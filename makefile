@@ -1,4 +1,4 @@
-VPATH = bin
+VPATH = src
 
 objects = \
         NFA.o exception.o printfunc.o scan.o vector.o\
