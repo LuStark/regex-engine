@@ -7,6 +7,7 @@ objects = \
 
 simpleLex: $(objects) 
 	cc -o simpleLex $(objects)
+	rm $(objects)
         
 NFA.o:\
 	NFA.c NFA.h constant.h typedef.h
