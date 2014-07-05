@@ -3,7 +3,7 @@ VPATH = src
 objects = \
         NFA.o exception.o printfunc.o scan.o vector.o\
         status_set.o cmp.o nfa_to_dfa.o Set.o hash_for_wrap.o\
-        DFAEntity.o regexTree.o LLex.o test_LLex.o
+        DFAEntity.o regexTree.o LLex.o main.o
 
 simpleLex: $(objects) 
 	cc -o simpleLex $(objects)
@@ -36,7 +36,7 @@ regexTree.o: LLex.h
 
 LLex.o:      LLex.h
 
-test_LLex.o: LLex.h
+main.o: LLex.h
 
 clean:
 	rm $(objects)
