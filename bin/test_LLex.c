@@ -1,7 +1,4 @@
-#include "global.h"
 #include "LLex.h"
-#include "typedef.h"
-#include "DFAEntity.h"
 #include <stdio.h>
 #include <string.h>
 

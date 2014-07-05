@@ -1,11 +1,10 @@
 #include "nfa_to_dfa.h"
-#include "NFA.h"
-#include "queue.h"
-#include "status_set.h"
-#include "constant.h"
-#include "set_status_wrap.h"
-#include "hash_for_wrap.h"
-#include "Set.h"
+//#include "queue.h"
+//#include "status_set.h"
+//#include "constant.h"
+//#include "set_status_wrap.h"
+//#include "hash_for_wrap.h"
+//#include "Set.h"
 
 
 static bool

@@ -1,8 +1,4 @@
 #include "LLex.h"
-#include "DFAEntity.h"
-#include "NFA.h"
-#include "nfa_to_dfa.h"
-#include "typedef.h"
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>

@@ -4,9 +4,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <wchar.h>
-#include "cmp.h"
-#include "queue.h"
-#include "status_set.h"
 
 /* 定义一个最小优先级的符号 */
 #define MIN_ORITY_SIGN 1

@@ -54,6 +54,8 @@ Insert_EntTree( linkNode root, RegexEntity ent )
         printf("内存分配失败!\n");
         exit(1);
     }
+    strcpy( newnode->key, ent.name );
+
     newnode->regex_entity = ent;
 
     if( cmpValue == -1 )

@@ -2,7 +2,10 @@
 #define _LLEX_H_
 
 #include "typedef.h"
+#include "NFA.h"
 #include "DFAEntity.h"
+#include "nfa_to_dfa.h"
+#include "global.h"
 #include <stdio.h>
 
 
