@@ -15,13 +15,13 @@ simpleLex
 
 3. simpleLex的安装
 -------------------------
-    1. 在项目根目录下输入make命令,这一步编译得到可执行文件simpleLex。
-    2. 输入make install（可能输入根用户权限），将simpleLex安装到/usr/bin。
+####    1. 在项目根目录下输入make命令,这一步编译得到可执行文件simpleLex。
+####    2. 输入make install（可能输入根用户权限），将simpleLex安装到/usr/bin。
 
 4. simpleLex的使用。
 ----------------------------------
-####1. 构造.l文件,格式如下: 
-        {% 头文件，宏，全局变量 %} 
+####    1. 构造.l文件,格式如下: 
+            {% 头文件，宏，全局变量 %} 
          
 ####2. 接下来是若干行，每一行代表一个正则表达式: 
         RegexName   RegexContent 
