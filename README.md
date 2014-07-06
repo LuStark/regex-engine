@@ -16,9 +16,9 @@ simpleLex
 3. simpleLex的安装
 -------------------------
 ####1. 在项目根目录下执行make, 得到simpleLex: 
-        LuStark@LuStark-Satellite-L700:~/simpleLex$ make 
+        $ make 
 ####2. 在获取根用户权限下，执行以下安装命令可将simpleLex安装到/usr/bin: 
-        ~/simpleLex$ make install
+        $ make install
 
 4. 使用示例
 ---------------------------------- 
