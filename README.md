@@ -36,7 +36,7 @@ simpleLex
 
 5. 使用示例 
 ---------------------------------- 
-####    构造.l文件: 
+####1. 构造.l文件: 
         %{  
             #include <stdio.h> 
         %} 
@@ -50,16 +50,16 @@ simpleLex
         { word } { printf("WORD"); } 
         %% 
 
-####    执行 simpleLex lexfile.l: 
-            这一步得到lex.yy.c文件
+####2. 执行以下命令，得到lex.yy.c文件: 
+            $ simpleLex lexfile.l 
 
-####    编译 lex.yy.c，得到Lex可执行文件: 
-            cc -o Lex lex.yy.c
+####3. 编译lex.yy.c，得到Lex可执行文件: 
+            $ cc -o Lex lex.yy.c 
 
-####    随意构造test.in: 
-            test.in文件: 
-                313 abc 432  fewfwe f3 
+####4. 随意构造test.in文件: 
+            313 abc 432  fewfwe f3 
 
-####    输入以下命令：  ./Lex test.in: 
-            得到一下输出：
+####5. 词法识别：  
+            $ ./Lex test.in 
+            NUM WORD NUM WORD WORDNUM 
 
