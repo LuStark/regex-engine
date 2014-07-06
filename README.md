@@ -20,8 +20,8 @@ simpleLex
 
 4. simpleLex的使用。
 ----------------------------------
-####    1. 构造.l文件,格式如下: 
-            {% 头文件，宏，全局变量 %} 
+####1. 构造.l文件,格式如下: 
+        {% 头文件，宏，全局变量 %} 
          
 ####2. 接下来是若干行，每一行代表一个正则表达式: 
         RegexName   RegexContent 
@@ -33,4 +33,33 @@ simpleLex
         结束时用%%分割 
 
 ####4. main函数的设置暂且搁置。
+
+5. 使用示例 
+---------------------------------- 
+####    构造.l文件: 
+        %{  
+            #include <stdio.h> 
+        %} 
+        digit   [0-9]+ 
+        space   \s* 
+        word    [A-Za-z]+ 
+ 
+        %% 
+        { digit } { printf("NUM"); } 
+        { space } { printf(" "); } 
+        { word } { printf("WORD"); } 
+        %% 
+
+####    执行 simpleLex lexfile.l: 
+            这一步得到lex.yy.c文件
+
+####    编译 lex.yy.c，得到Lex可执行文件: 
+            cc -o Lex lex.yy.c
+
+####    随意构造test.in: 
+            test.in文件: 
+                313 abc 432  fewfwe f3 
+
+####    输入以下命令：  ./Lex test.in: 
+            得到一下输出：
 
