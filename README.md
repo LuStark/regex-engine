@@ -13,5 +13,14 @@ simpleLex
     为lex.yy.c中，采用编译器编译这份代码，得到的可执行程序  
     可以识别给定文本。
 
-3. simpleLex的功能展示
+3. simpleLex的安装
 -------------------------
+    1. 在项目根目录下输入make命令,这一步编译得到可执行文件simpleLex。
+    2. 输入make install（可能输入根用户权限），将simpleLex安装到/usr/bin。
+
+4. simpleLex的使用。
+    1. 构造.l文件,格式如下: 
+    
+    2. 生成lex.yy.c文件: 
+
+    3. 直接编译lex.yy.c文件，导入测试数据test.in: 
