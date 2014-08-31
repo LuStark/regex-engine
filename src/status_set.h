@@ -19,6 +19,12 @@ typedef struct node {
 
 typedef StatusSet   SingleStatusSet,MultiStatusSet;
 
+extern void
+free_StatusSet( StatusSet );
+
+extern void
+free_StatusSetNode( StatusSet_listHeader );
+
 
 extern  StatusSet
 getEpsilonClosure( NFA*, int );

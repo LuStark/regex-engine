@@ -27,4 +27,10 @@ Find( HashTable_For_Wrap *HT, StatusSet sset );
 extern  bool
 HashTable_Insert( HashTable_For_Wrap *HT, Set_Status_Wrap Wrap);
 
+extern void
+free_hash_table( HashTable_For_Wrap *HT );
+
+extern void
+free_hash_node( Hash_LinkNode *node );
+
 #endif

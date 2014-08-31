@@ -111,7 +111,7 @@ NFA *CreateOneNFA( xchar_t c )
     e = malloc( sizeof( Edge ) );
     e -> from_Status = nfa -> start ;
     e -> to_Status = nfa -> end ;
-    e -> matchContent = malloc( sizeof(xchar_t) ) ;
+    e -> matchContent = malloc( sizeof(c) ) ;
     e -> matchContent[ 0 ] = c ;
     }
 
@@ -588,6 +588,7 @@ xchar_t
         {
             /* currch是被转义字符 */
             tcode   =   hasLinkBetween(0,nextch);
+            state &= 1;
         }
 
         if( (state&2)!=2 && tcode==-1 ){
@@ -1146,3 +1147,32 @@ Status_Transfer_Under_Condition(const Status *status, Condition cond)
         return status->OutEdges[i]->to_Status->ID;
     return -1;
 }
+
+void
+freeEdge( Edge *edge )
+{
+    int i;
+    if( edge->numOfMatchRange > 0 )
+        free( edge->matchRange );
+    if( edge->matchContent != NULL )
+        free( edge->matchContent );
+    if( edge->inMatchRange != NULL )
+        free( edge->inMatchRange );
+    if( edge->numOfInMatchRange > 0)
+        free( edge->inMatchRange );
+
+}
+
+void
+freeNFA( NFA *nfa )
+{
+    int i;
+    for( i=0; i < nfa->numOfEdges; i++ )
+        freeEdge( nfa->edgeArray[i] );
+    free( nfa -> edgeArray );
+    for( i=0; i < nfa->numOfStatus; i++ )
+        free( nfa->Status[i] );
+    
+    free(nfa->Status);
+}
+

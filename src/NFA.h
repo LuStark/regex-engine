@@ -152,4 +152,7 @@ extern int
 Status_Transfer_Under_Condition(const Status *status, Condition cond);
 
 
+void freeEdge( Edge *edge );
+void freeNFA( NFA *nfa );
+
 #endif

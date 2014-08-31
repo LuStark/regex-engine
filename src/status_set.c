@@ -146,4 +146,34 @@ void connect( StatusSet_listHeader *L, StatusSet_linkNode *p )
 }
 
 
+extern void
+free_StatusSet( StatusSet s )
+{
+    freeVector(&s.eps_closure);    
+    freeVector(&s.StatusID);
+}
+
+
+extern void
+free_StatusSetNode( StatusSet_listHeader L )
+{
+    StatusSet_linkNode p,q;
+
+    if( L==NULL ) return;
+
+    p = L;
+
+    while( p->next != NULL ) p = p->next;
+
+    while (q!=L)
+    {
+        q = p->front;
+        free(p);
+        p = NULL;
+        p = q;
+    }
+
+}
+
+
 

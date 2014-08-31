@@ -71,3 +71,18 @@ HashTable_Insert( HashTable_For_Wrap *HT, Set_Status_Wrap Wrap)
     return true;
 
 }
+
+void
+free_hash_node( Hash_LinkNode node )
+{
+    free(node);
+}
+
+void
+free_hash_table( HashTable_For_Wrap *HT )
+{
+    int i;
+    
+    for( i=0; i<MAX_HASH_SIZE; i++ )
+        free_hash_node( HT->slot[i] );
+}

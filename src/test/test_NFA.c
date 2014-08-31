@@ -1,4 +1,4 @@
-#include "global.h"
+#include "../global.h"
 
 xchar_t *RegExp[ MAXNUM_REGEXP ];
 
@@ -33,9 +33,10 @@ int main( )
         //getchar();
     
         dfa = Subset_Construct( nfa );
+        /*
         wprintf(L"DFA graph:\n");
         printNFA( dfa );
-
+        */
         wprintf(L">>>  ");
     }
     /* 无法识别的正则表达式: */

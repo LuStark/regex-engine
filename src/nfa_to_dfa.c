@@ -45,7 +45,7 @@ DFA
      * 这些状态点和边是构成DFA的元素，其中状态点需要保存在
      * 队列中 */
 
-    DFA                 *dfa;
+    DFA                 *dfa, *min_dfa;
     Edge                *newEdge;
     Status              *currentStatus, *newStatus ;
 
@@ -163,8 +163,15 @@ DFA
 //    wprintf(L"DFA graph(raw):\n");
 //    printNFA( dfa );
 
-//    dfa = MINI_Status_for_DFA( dfa );    
-    dfa = MINIMUN_DFAStatus( dfa );
+//    min_dfa = MINI_Status_for_DFA( dfa );
+    //min_dfa = MINIMUN_DFAStatus( dfa );
+    //freeNFA( dfa );
+    /* free memory for sets */
+
+//    for ( i=0; i<nfa->numOfStatus; i++ )
+//        free_StatusSet(Sets[i]);
+
+    /* free memory for hash table */
 
     return dfa;
 }
@@ -420,11 +427,17 @@ DFA
 
     reassignID( min_dfa );
     reassign_edge_order( min_dfa );
+
+
+    /* free Sets */
+    for( i=0; i<numOfSets; i++ )
+        
     
     return min_dfa;
 }
 
 
+//not this
 DFA
 *MINI_Status_for_DFA( DFA *dfa )
 {
@@ -589,6 +602,16 @@ DFA
                 slim_dfa->Status[i]->FinalStatus = true;
         }
     }
+
+    /*
+    for( i=0; i<numOfSets; i++ )
+        free_StatusSetNode( S[i] );
+
+    free_StatusSetNode( DFASet_header );
+    free_StatusSetNode( newheader );
+    free_StatusSetNode( p );
+    free_StatusSetNode( q );
+    */
 
     /* 重新分配状态 */
     reassignID( slim_dfa );
