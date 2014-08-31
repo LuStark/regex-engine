@@ -1,6 +1,6 @@
 simpleLex
 =========
-1. simpleLex是什么？
+1. simpleLex？
 -------------------------
     Lex是Unix环境下著名的词法分析程序生成器，simpleLex是
     模仿Lex的一个简陋的版本。
