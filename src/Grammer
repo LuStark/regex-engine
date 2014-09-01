@@ -1,0 +1,28 @@
+regex -> re_union_level 
+
+re_union_level -> re_link_level { | re_link_level }
+
+re_link_level -> re_closure_level { re_closure_level }
+
+re_closure_level -> re_top_level { closure_op }1    #匹配一次
+
+re_top_level -> ( regex ) | non-special-character | escape_character | character_range
+
+
+# 非特殊字符的文法规则 :  \+*?|[(
+non-special -> 
+                if c in First[non-special]
+                    return c 
+                else
+                    return 'Error'
+
+
+escape_character -> \ anychar(终结符号) 
+
+character -> escape_character | non-special
+
+character_range -> [ choose_or_not {range} ]  #零次或者多次
+
+choose_or_not -> ^ | ε
+
+range -> anychar { - anychar }1   #只匹配零次或者一次
