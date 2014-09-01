@@ -11,7 +11,8 @@ typedef Status *VertexTable;
 typedef Edge    *Condition;
 typedef NFA     DFA;
 
-struct Status {
+struct Status 
+{
     Edge **InEdges;
     int numOfInEdges;
     Edge **OutEdges;
@@ -49,7 +50,8 @@ struct Edge {
 
 };
 
-struct NFA {
+struct NFA 
+{
     Status *start, *end;    /* NFA只有一个end,而DFA有多个end,所以DFA不使用end字段 */
     Edge **edgeArray ;
     Status **Status ; /* 首尾分别指向start,end */
@@ -151,8 +153,9 @@ EqualCondition( Condition , Condition);
 extern int  
 Status_Transfer_Under_Condition(const Status *status, Condition cond);
 
+void 
+freeEdge( Edge *edge );
 
-void freeEdge( Edge *edge );
 void freeNFA( NFA *nfa );
 
 #endif

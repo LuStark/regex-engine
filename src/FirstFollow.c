@@ -40,16 +40,22 @@ void init_FirstSet()
         First_character[i] = 1;
         First_range[i] = 1;
         First_re_top_level[i] = 1;
-        First_re_closure_level[i] = 1;
-        First_re_link_level[i] = 1;
-        First_re_union_level[i] = 1;
-        First_regex[i] = 1;
         First_non_special[i] = 1;
         First_escape_character[i] = 0;
         First_choose_or_not[i]=0;
         First_character_range[i] = 0;
         First_closure_op[i] = 0;
     }
+    First_re_top_level['$'] = First_re_top_level['+'] = 
+            First_re_top_level['*'] = First_re_top_level['?'] = 
+                First_re_top_level['|'] = 0;
+    for (i=0; i<128; i++)
+    {
+        First_regex[i] = First_re_union_level[i] = First_re_link_level[i]
+            = First_re_closure_level[i] = First_re_top_level[i];
+    }
+
+
     First_non_special['\\'] = 0;
     First_character['+'] = First_non_special['+'] = 0;
     First_character['*'] = First_non_special['*'] = 0;

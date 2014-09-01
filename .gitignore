@@ -1,2 +1,8 @@
 *.swp
 *.exe
+*.gch
+*.l
+*.txt
+*.out
+*.swo
+*.o

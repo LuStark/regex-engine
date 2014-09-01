@@ -5,6 +5,8 @@
 
 typedef wchar_t xchar_t;
 typedef short   Index;
+
+typedef unsigned long long int bitVector;
 //typedef xchar_t *_xString ;
 
 // 表示字符的范围。

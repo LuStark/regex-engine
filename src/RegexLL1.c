@@ -157,6 +157,7 @@ int LL1_re_top_level()
     char c;
 
     c = regex[currentIndex];
+    
     if (First_non_special[c] == 1)
     {
         LL1_non_special_char();
@@ -223,14 +224,25 @@ int LL1_re_union_level()
     c = regex[currentIndex];
     while (c == '|')
     {
-        match (c);
+        match ('|');
         LL1_re_link_level();
+        c = regex[currentIndex];
     }
 }
 
 int LL1_regex()
 {
+    char c;
+
     LL1_re_union_level();
+
+    if (!LL1_finished_symbol)
+    {
+        printf ("未可预知的符号: ");
+        while ((c=regex[currentIndex++]) != '$')
+            putchar (c);
+        exit(1);
+    }
 }
 
 int main ()
