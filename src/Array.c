@@ -95,3 +95,41 @@ T Array_copy(T array, int length)
         memcpy (copy->array, array->array,copy->length*array->size);
     return copy;
 }
+
+void Array_copy_from_range (T toArray, int start1, T fromArray, int start2, int copylength)
+{
+    assert (toArray);
+    assert (fromArray);
+    
+    assert (copylength>0);
+
+    if (start2+copylength > fromArray->length)
+        copylength = fromArray->length - start2;
+
+    if (start1+copylength > toArray->length)
+        copylength = toArray->length - start1;
+
+    memcpy (toArray->array + start1 * toArray->size, 
+            fromArray->array + start2 * fromArray->size, 
+            copylength*fromArray->size
+            );
+
+}
+
+
+void Array_append(T array, void *elem)
+{
+    assert(array);
+
+    if (array->length==0)
+    {
+        array->array = malloc (1*array->size);
+        array->length = 1;
+        Array_put (array, 0, elem);
+    }
+    else
+    {
+        Array_resize (array, array->length+1);
+        Array_put (array, array->length-1, elem);
+    }
+}
