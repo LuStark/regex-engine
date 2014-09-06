@@ -14,7 +14,7 @@ struct NFA
     Status      start, end;
     Array_T     edgeArray;
     Array_T     statusArray;
-}
+};
 
 
 NFA CreateSingleNFA (wchar_t c)
@@ -36,22 +36,19 @@ NFA CreateSingleNFA (wchar_t c)
     addCharacter (e, c);
 
     setStatusID (nfa->start, 1);
-    // 创建长度为１，元素大小为Edge结构体的动态数组.
-    nfa->OutEdges = Array_new (1, sizeof(struct Edge)); 
-    Array_put (nfa->OutEdges, 0, e);
+    appendOutEdge (nfa->start, e);
 
     setStatusID (nfa->end, 2);
-    // 创建长度为１，元素大小为Edge结构体的动态数组.
-    nfa->InEdges = Array_new (1, sizeof(struct Edge));
-    Array_put (nfa->InEdges, 0, e);
+    appendOutEdge (nfa->end, e);
 
     ensureFinalStatus (nfa->end);
 
     /* 初始化nfa的Edge数组 */
-    nfa->edgeArray = Array_new (1, sizeof(struct Edge));
+    nfa->edgeArray = Array_new (1, sizeOfEdge());
     Array_put (nfa->edgeArray, 0, e);
+
     /* 初始化nfa的Status状态数组 */
-    nfa->statusArray = Array_new (2, sizeof(struct Status));
+    nfa->statusArray = Array_new (2, sizeOfStatus());
     Array_put (nfa->statusArray, 0, nfa->start);
     Array_put (nfa->statusArray, 1, nfa->end);
 
@@ -73,10 +70,10 @@ NFA CreateNFA_without_edge()
     ensureFinalStatus (nfa->start);
 
     /* 初始化nfa的Edge数组, 长度为0 */
-    nfa->edgeArray = Array_new (0, sizeof(struct Edge));
+    nfa->edgeArray = Array_new (0, sizeOfEdge());
 
     /* 初始化nfa的Status状态数组 */
-    nfa->statusArray = Array_new (1, sizeof(struct Status));
+    nfa->statusArray = Array_new (1, sizeOfStatus());
     Array_put (nfa->statusArray, 0, nfa->start);
 
     return nfa ;
@@ -93,8 +90,8 @@ linkTwoStatus_by_AnEdge( Status fromS ,
     assert(e);
     setFromToStatus (e, fromS, toS);
     
-    Array_append (fromS->OutEdges, e);
-    Array_append (toS->InEdges, e);
+    appendOutEdge(fromS, e);
+    appendInEdge(toS, e);
 
 }
 
@@ -102,7 +99,8 @@ NFA CopyNFA (NFA nfa)
 {
     int i, id, n_status ;
     NFA     copyNFA ;
-    Status  fromS, toS;
+    Status  fromS, toS, s1, s2;
+    Edge    e, e_temp;
 
     copyNFA = malloc (sizeof (NFA));
     assert (copyNFA);
@@ -113,10 +111,11 @@ NFA CopyNFA (NFA nfa)
     
     for (i=0; i<n_status; i++)
     {
-        copyNFA->statusArray[i]->InEdges = NULL;
-        copyNFA->statusArray[i]->OutEdges = NULL;
-        copyNFA->statusArray[i]->InEdges = Array_new(0, sizeof(struct Edge));
-        copyNFA->statusArray[i]->OutEdges = Array_new(0, sizeof(struct Edge));
+        //copyNFA->statusArray[i]->InEdges = NULL;
+        //copyNFA->statusArray[i]->OutEdges = NULL;
+        
+        //copyNFA->statusArray[i]->InEdges = Array_new(0, sizeOfEdge());
+        //copyNFA->statusArray[i]->OutEdges = Array_new(0, sizeOfEdge());
     }
 
     /* 第二步，复制所有边(除了指向前后Status的储存单元 */
@@ -126,22 +125,21 @@ NFA CopyNFA (NFA nfa)
     /* 第三部，针对edgeArray的每一条边，生成每个Status的InEdges和OutEdges */
     for (i=0; i < Array_length (nfa->edgeArray); i++)
     {
-        e = (Edge)Array_get (nfa->edgeArray);
-        fromS   = e -> from;
-        toS     = e -> to;
+        e = (Edge)Array_get (nfa->edgeArray, i);
+        fromS   = getfromStatus (e);
+        toS     = gettoStatus (e);
 
-        Array_append (
-                    copyNFA->statusArray[fromS->ID]->OutEdges, 
-                    copyNFA->edgeArray[i]
-                    );
-        Array_append (
-                    copyNFA->statusArray[toS->ID]->InEdges,
-                    copyNFA->edgeArray[i]
-                    );
-        setFromToStatus (copyNFA->edgeArray[i], 
-                    copyNFA->statusArray[fromS->ID],
-                    copyNFA->statusArray[toS->ID]
-                    );
+        e = Array_get (copyNFA->edgeArray, i);
+        
+        id = getStatusID (fromS);
+        s1 = Array_get (copyNFA->statusArray, id);
+        appendOutEdge (s1, e);
+        
+        id = getStatusID (toS);
+        s2 = Array_get (copyNFA->statusArray, id);
+        appendInEdge (s2, e);
+        
+        setFromToStatus (e, s1, s2);
     }
 
     /* 最后，更新start 和 end */
@@ -165,7 +163,7 @@ NFA Link (NFA frontNFA, NFA toNFA )
     bridge = allocEpsilonEdge();
     
     frontNFAcopy = CopyNFA (frontNFA);
-    toNFAcopy = CopyNFA (tailNFA);
+    toNFAcopy = CopyNFA (toNFA);
 
     cancelFinalStatus (frontNFAcopy->end);
     cancelFinalStatus (toNFAcopy->end);
@@ -182,36 +180,20 @@ NFA Link (NFA frontNFA, NFA toNFA )
     /* 合并 frontNFAcopy 和 toNFAcopy 的所有状态 */
     n1 = Array_length (frontNFAcopy->statusArray);
     n2 = Array_length (toNFAcopy->statusArray);
-    combined_NFA->statusArray = Array_new (n1+n2, sizeof(struct Status));
+    combined_NFA->statusArray = Array_new (n1+n2, sizeOfStatus());
     /* 直接进行值拷贝 */
-    for (i=0; i<n1; i++)
-    {
-        s = Array_get (frontNFAcopy->statusArray, i);
-        Array_put (combined_NFA->statusArray, i, s); 
-    }
-    for (i=0; i<n2; i++)
-    {
-        s = Array_get (toNFAcopy->statusArray, i);
-        Array_put (combined_NFA->statusArray, i+n1, s); 
-    }
+    Array_copy_from_range (combined_NFA->statusArray, 0, frontNFAcopy->statusArray, 0, n1);
 
-    
+    Array_copy_from_range (combined_NFA->statusArray, n1, toNFAcopy->statusArray, 0, n2);
+
     /* 合并 frontNFAcopy 和 toNFAcopy 的所有状态 */
     n1 = Array_length (frontNFAcopy->edgeArray);
     n2 = Array_length (toNFAcopy->edgeArray);
-    combined_NFA->edgeArray = Array_new (n1+n2+1, sizeof(struct Edge)); 
+    combined_NFA->edgeArray = Array_new (n1+n2+1, sizeOfEdge()); 
 
-    for (i=0; i<n1; i++)
-    {
-        e = Array_get (frontNFAcopy->edgeArray, i);
-        Array_put (combined_NFA->edgeArray, i, e);
-    }
+    Array_copy_from_range (combined_NFA->edgeArray, 0, frontNFAcopy->edgeArray, 0, n1);
     Array_put (combined_NFA->edgeArray, n1, bridge);
-    for (i=0; i<n2; i++)
-    {
-        e = Array_get (toNFAcopy->edgeArray, i);
-        Array_put (combined_NFA->edgeArray, i, e);
-    }
+    Array_copy_from_range (combined_NFA->edgeArray, n1+1, toNFAcopy->edgeArray, 0, n2);
 
     /* ID 问题 */
     n = Array_length(combined_NFA->statusArray);
@@ -254,204 +236,194 @@ NFA Union (NFA nfa1, NFA nfa2 )
     linkTwoStatus_by_AnEdge (nfa1copy->end, end, e1_end);
     linkTwoStatus_by_AnEdge (nfa2copy->end, end, e2_end);
 
-    combineNFA = malloc (sizeof (NFA));
+    combineNFA = malloc (sizeof (struct NFA));
+    assert(combineNFA);
     combineNFA->start = start ;
     combineNFA->end   = end ;
     ensureFinalStatus (combineNFA->end);
 
     /* 构造合成nfa的状态数组 */
-    n1 = Array_length (nfa1copy->numOfStatus);
-    n2 = Array_length (nfa2copy->numOfStatus);
+    n1 = Array_length (nfa1copy->statusArray);
+    n2 = Array_length (nfa2copy->statusArray);
 
-    combineNFA->statusArray = Array_new(n1+n2+2, sizeof(struct Status));
+    combineNFA->statusArray = Array_new(n1+n2+2, sizeOfStatus());
     
     /* 初始化nfa状态数组的第一个状态 */
     Array_put (combineNFA->statusArray, 0, start);
     
-    for (i=0; i<n1; i++)
-    {
-        s = Array_get (nfa1copy->statusArray, i);
-        Array_put (combineNFA->statusArray, i+1, s);
-    }
-    for (i=0; i<n2; i++)
-    {
-        s = Array_get (nfa2copy->statusArray, i);
-        Array_put (combineNFA->statusArray, n1+1+i, s);
-    }
+    Array_copy_from_range (combineNFA->statusArray, 1, nfa1copy->statusArray, 0, n1);
+    Array_copy_from_range (combineNFA->statusArray, n1+1, nfa2copy->statusArray, 0, n2);
+    
     Array_put (combineNFA->statusArray, n1+n2+1, end);
     
 
     // 储存边集合 
     n1 = Array_length (nfa1copy->edgeArray);
     n2 = Array_length (nfa2copy->edgeArray);
-    combineNFA->edgeArray = Array_new (n1+n2+4)
+    combineNFA->edgeArray = Array_new (n1+n2+4, sizeOfEdge());
 
     Array_put (combineNFA->edgeArray, 0, e1_start);
     Array_put (combineNFA->edgeArray, 1, e2_start);
     
-    for (i=0; i<n1; i++)
-    {
-        e = Array_get (nfa1copy->edgeArray, i);
-        Array_put (combineNFA->edgeArray, i+2);
-    }
-    for (i=0; i<n2; i++)
-    {
-        e = Array_get (nfa2copy->edgeArray, i);
-        Array_put (combineNFA->edgeArray, n1+i+2);
-    }
+    Array_copy_from_range (combineNFA->edgeArray, 2, nfa1copy->edgeArray, 0, n1);
+    Array_copy_from_range (combineNFA->edgeArray, n1+2, nfa2copy->edgeArray, 0, n2);
 
-    Array_put (combineNFA->edgeArray, n1+n2, e1_end);
-    Array_put (combineNFA->edgeArray, n1+n2+1, e2_end);
+    Array_put (combineNFA->edgeArray, n1+n2+2, e1_end);
+    Array_put (combineNFA->edgeArray, n1+n2+3, e2_end);
     
     /* ID 问题 */
-    n = Array_length(combined_NFA->statusArray);
+    n = Array_length(combineNFA->statusArray);
     for (i=0; i<n; i++)
     {
-        s = Array_get (combined_NFA->statusArray, i);
+        s = Array_get (combineNFA->statusArray, i);
         setStatusID (s, i);
     }
 
     return combineNFA ;
 }
 
-NFA Closure( NFA *nfa )
+NFA Closure(NFA nfa)
 {
-    Edge *start_to_nfastart, *nfaEnd_to_nfastart, *nfaEnd_to_end, *start_to_end;
-    Status *start, *end ;
-    NFA *nfacopy;
-    NFA *newnfa;
+//    Edge *start_to_nfastart, *nfaEnd_to_nfastart, *nfaEnd_to_end, *start_to_end;
+    // 把nfa的起始状态记为ns, nfa的终止状态: ne
+    // 新nfa的起始状态 s, 新nfa终止状态 e,
 
-    int i, numE, numS;
+    Edge    s2ns, ne2ns, ne2e, s2e;
+
+    Status  start, end ;
+    Status  temp, s;
+
+    NFA     nfacopy;
+    NFA     newnfa;
+
+    int i, numE, numS, n;
     numE = numS = 0 ;
 
     nfacopy = CopyNFA(nfa);
    
-    newnfa = malloc( sizeof( NFA ) );
-    isNullPointer( newnfa );
+    newnfa = malloc (sizeof (struct NFA));
+    assert (newnfa);
 
     /* 构造边数组 */
-    newnfa->numOfEdges = nfacopy -> numOfEdges + 4;
-    newnfa -> edgeArray = malloc( sizeof(Edge*) * newnfa->numOfEdges );
-    isNullPointer( newnfa->edgeArray );
+    // newnfa->numOfEdges = nfacopy -> numOfEdges + 4;
+    // newnfa -> edgeArray = malloc( sizeof(Edge*) * newnfa->numOfEdges );
+    numE = Array_length (nfacopy->edgeArray);
+    newnfa->edgeArray = Array_new (numE+4, sizeOfEdge());
+    
     /* 构造状态数组 */
-    newnfa->numOfStatus = nfacopy -> numOfStatus + 2 ;
-    newnfa -> Status = malloc( sizeof(Status*) * newnfa->numOfStatus );
-    isNullPointer( newnfa->Status );
+    // 得到nfa状态个数
+    numS = Array_length (nfacopy->statusArray);
+    newnfa->statusArray = Array_new (numS+2,sizeOfStatus());
+
     /* 构造初始，终止状态, 并加入到Status数组上 */
-    newnfa -> start = allocStatus();
-    newnfa -> Status[ numS++ ] = newnfa -> start ;
-    newnfa -> end = allocStatus();
-    newnfa -> Status[ newnfa->numOfStatus -1 ] = newnfa->end;
-
-    /* 利用原nfa的状态数组，构造新nfa的状态数组 */
-    for( i = 0; i < nfacopy -> numOfStatus; i++ )
-        newnfa->Status[ numS ++ ] = nfacopy->Status[ i ] ;
-
+    newnfa->start = allocStatus();
+    Array_put (newnfa->statusArray, 0, newnfa->start);
+    Array_copy_from_range (newnfa->statusArray, 1, nfacopy->statusArray, 0, numS);
+    Array_put (newnfa->statusArray, numS+1, newnfa->end);
 
     /* 初始状态到原nfa的start */
-    start_to_nfastart = allocEpsilonEdge();
-    linkTwoStatus_by_AnEdge( newnfa->start, nfacopy->start, start_to_nfastart );
-    newnfa -> edgeArray[ numE++ ] = start_to_nfastart ;
+    s2ns = allocEpsilonEdge();
+    linkTwoStatus_by_AnEdge (newnfa->start, nfacopy->start, s2ns);
+    Array_put (newnfa->edgeArray, 0, s2ns);
 
-    /* 利用原nfa的状态数组，构造新nfa的状态数组 */
-    for( i = 0; i < nfacopy->numOfEdges; i++ )
-        newnfa -> edgeArray[ numE++ ] = nfacopy -> edgeArray[ i ];
+    Array_copy_from_range (newnfa->edgeArray, 1, nfacopy->edgeArray, 0, numE);
 
     /* 原nfa的end -> 原nfa的start */
-    nfaEnd_to_nfastart = allocEpsilonEdge();
-    linkTwoStatus_by_AnEdge( nfacopy->end, nfacopy->start, nfaEnd_to_nfastart );
-    newnfa -> edgeArray[ numE++ ] = nfaEnd_to_nfastart ;
+    ne2ns = allocEpsilonEdge();
+    linkTwoStatus_by_AnEdge (nfacopy->end, nfacopy->start, ne2ns);
+    Array_put (newnfa->edgeArray, numE+1, ne2ns);
 
     /* 原nfa的end状态 -> 新nfa的end状态 */
-    nfaEnd_to_end = allocEpsilonEdge();
-    linkTwoStatus_by_AnEdge( nfacopy->end, newnfa->end, nfaEnd_to_end ) ;
-    newnfa -> edgeArray[ numE++ ] = nfaEnd_to_end ;
+    ne2e  = allocEpsilonEdge();
+    linkTwoStatus_by_AnEdge (nfacopy->end, newnfa->end, ne2e);
+    Array_put (newnfa->edgeArray, numE+2, ne2e);
     
     /* 新nfa的start -> 新nfa的end */
-    start_to_end = allocEpsilonEdge();
-    linkTwoStatus_by_AnEdge( newnfa->start, newnfa->end, start_to_end );
-    newnfa -> edgeArray[ numE++ ] = start_to_end ;
+    s2e = allocEpsilonEdge();
+    linkTwoStatus_by_AnEdge (newnfa->start, newnfa->end, s2e);
+    Array_put (newnfa->edgeArray, numE+3, s2e);
 
-    if( numE != newnfa->numOfEdges ){
-        printf("numE != numOfEdges ");
-        while(1){}
+    /* ID 问题 */
+    n = Array_length(newnfa->statusArray);
+    for (i=0; i<n; i++)
+    {
+        s = Array_get (newnfa->statusArray, i);
+        setStatusID (s, i);
     }
 
-    for( i = 0; i < newnfa->numOfStatus; i++ ){
-        newnfa -> Status[ i ]->ID = i;
-    }
-    return newnfa ;
+    return newnfa;
 }
 
-NFA
-*Option( NFA *nfa )
+NFA Option (NFA nfa)
 {
-    Edge *start_to_nfastart, *nfaEnd_to_end, *start_to_end;
-    Status *start, *end ;
-    NFA *nfacopy;
-    NFA *newnfa;
+//    Edge *start_to_nfastart, *nfaEnd_to_nfastart, *nfaEnd_to_end, *start_to_end;
+    // 把nfa的起始状态记为ns, nfa的终止状态: ne
+    // 新nfa的起始状态 s, 新nfa终止状态 e,
 
-    int i, numE, numS;
+    Edge    s2ns, ne2ns, ne2e, s2e;
+
+    Status  start, end ;
+    Status  temp, s;
+
+    NFA     nfacopy;
+    NFA     newnfa;
+
+    int i, numE, numS, n;
     numE = numS = 0 ;
 
     nfacopy = CopyNFA(nfa);
    
-    newnfa = malloc( sizeof( NFA ) );
-    isNullPointer( newnfa );
+    newnfa = malloc (sizeof (struct NFA));
+    assert (newnfa);
 
     /* 构造边数组 */
-    newnfa->numOfEdges = nfacopy -> numOfEdges + 3;
-    newnfa -> edgeArray = malloc( sizeof(Edge*) * newnfa->numOfEdges );
-    isNullPointer( newnfa->edgeArray );
+    // newnfa->numOfEdges = nfacopy -> numOfEdges + 4;
+    // newnfa -> edgeArray = malloc( sizeof(Edge*) * newnfa->numOfEdges );
+    numE = Array_length (nfacopy->edgeArray);
+    newnfa->edgeArray = Array_new (numE+3, sizeOfEdge());
+    
     /* 构造状态数组 */
-    newnfa->numOfStatus = nfacopy -> numOfStatus + 2 ;
-    newnfa -> Status = malloc( sizeof(Status*) * newnfa->numOfStatus );
-    isNullPointer( newnfa->Status );
+    // 得到nfa状态个数
+    numS = Array_length (nfacopy->statusArray);
+    newnfa->statusArray = Array_new (numS+2,sizeOfStatus());
+
     /* 构造初始，终止状态, 并加入到Status数组上 */
-    newnfa -> start = allocStatus();
-    newnfa -> Status[ numS++ ] = newnfa -> start ;
-    newnfa -> end = allocStatus();
-    newnfa -> Status[ newnfa->numOfStatus -1 ] = newnfa->end;
-
-    /* 利用原nfa的状态数组，构造新nfa的状态数组 */
-    for( i = 0; i < nfacopy -> numOfStatus; i++ )
-        newnfa->Status[ numS ++ ] = nfacopy->Status[ i ] ;
-
+    newnfa->start = allocStatus();
+    Array_put (newnfa->statusArray, 0, newnfa->start);
+    Array_copy_from_range (newnfa->statusArray, 1, nfacopy->statusArray, 0, numS);
+    Array_put (newnfa->statusArray, numS+1, newnfa->end);
 
     /* 初始状态到原nfa的start */
-    start_to_nfastart = allocEpsilonEdge();
-    linkTwoStatus_by_AnEdge( newnfa->start, nfacopy->start, start_to_nfastart );
-    newnfa -> edgeArray[ numE++ ] = start_to_nfastart ;
+    s2ns = allocEpsilonEdge();
+    linkTwoStatus_by_AnEdge (newnfa->start, nfacopy->start, s2ns);
+    Array_put (newnfa->edgeArray, 0, s2ns);
 
-    /* 利用原nfa的状态数组，构造新nfa的状态数组 */
-    for( i = 0; i < nfacopy->numOfEdges; i++ )
-        newnfa -> edgeArray[ numE++ ] = nfacopy -> edgeArray[ i ];
+    Array_copy_from_range (newnfa->edgeArray, 1, nfacopy->edgeArray, 0, numE);
 
     /* 原nfa的end状态 -> 新nfa的end状态 */
-    nfaEnd_to_end = allocEpsilonEdge();
-    linkTwoStatus_by_AnEdge( nfacopy->end, newnfa->end, nfaEnd_to_end ) ;
-    newnfa -> edgeArray[ numE++ ] = nfaEnd_to_end ;
+    ne2e  = allocEpsilonEdge();
+    linkTwoStatus_by_AnEdge (nfacopy->end, newnfa->end, ne2e);
+    Array_put (newnfa->edgeArray, numE+1, ne2e);
     
     /* 新nfa的start -> 新nfa的end */
-    start_to_end = allocEpsilonEdge();
-    linkTwoStatus_by_AnEdge( newnfa->start, newnfa->end, start_to_end );
-    newnfa -> edgeArray[ numE++ ] = start_to_end ;
+    s2e = allocEpsilonEdge();
+    linkTwoStatus_by_AnEdge (newnfa->start, newnfa->end, s2e);
+    Array_put (newnfa->edgeArray, numE+2, ne2e);
 
-    if( numE != newnfa->numOfEdges ){
-        printf("numE != numOfEdges ");
-        while(1){}
+    /* ID 问题 */
+    n = Array_length(newnfa->statusArray);
+    for (i=0; i<n; i++)
+    {
+        s = Array_get (newnfa->statusArray, i);
+        setStatusID (s, i);
     }
 
-    for( i = 0; i < newnfa->numOfStatus; i++ ){
-        newnfa -> Status[ i ]->ID = i;
-    }
-    return newnfa ;
+    return newnfa;
 }
 
-NFA
-*Repeat_atleast_one( NFA *nfa )
+NFA Repeat_atleast_one( NFA nfa )
 {
-    NFA *nfa1, *nfa2, *newnfa ;
+    NFA nfa1, nfa2, newnfa ;
 
     nfa1 = CopyNFA( nfa ) ;
     nfa2 = Closure( nfa ) ;
@@ -462,34 +434,13 @@ NFA
 
 
 
-
-Edge *CopyEdge( Edge *e )
-{
-    Edge *newedge ;
-    newedge = malloc( sizeof( Edge ) );
-    /* 值拷贝 */
-    *newedge = *e ;
-    newedge -> from_Status = newedge -> to_Status = NULL ;
-
-    if( e->matchContent != NULL )
-        wcscpy( newedge->matchContent, e->matchContent );
-
-    if( e->inMatchContent != NULL )
-        wcscpy( newedge -> inMatchContent, e -> inMatchContent ) ;
-        
-    RangeCopy( newedge -> matchRange , e->matchRange, e->numOfMatchRange) ;
-    RangeCopy( newedge -> inMatchRange, e->inMatchRange, e->numOfInMatchRange ) ; 
-    
-    return newedge ;
-
-}
-
 void RangeCopy(
                 Range *toRangeArray,
                 Range *fromRangeArray,
                 int size
             )
 {
+    /*
     int i ;
     if( size <= 0 )
         return ;
@@ -498,6 +449,7 @@ void RangeCopy(
 
     for( i = 0; i < size; i++ )
         toRangeArray[ i ] = fromRangeArray[ i ];
+    */
 }
 
 
@@ -511,9 +463,9 @@ itemInSet( int id, int Set[], int size )
     return false;
 }
 
-void 
-generateCondSet( NFA *nfa, Condition *CondSet,  int *size )
+void generateCondSet( NFA nfa, Edge *CondSet,  int *size )
 {
+    /*
     Condition   cache[ MAXLEN_REGEXP ];
     int     i, j, cacheSize = 0 ;
     int     is_repeat_condition;
@@ -522,7 +474,7 @@ generateCondSet( NFA *nfa, Condition *CondSet,  int *size )
     {
         if( nfa->edgeArray[i]->hasEpsilon == false )
         {
-            /* 遍历cache集合中所有条件，观察有无重复的条件 */
+            // 遍历cache集合中所有条件，观察有无重复的条件 
             is_repeat_condition = 0;
             for( j=0; j<cacheSize; j++ )
             {
@@ -538,16 +490,16 @@ generateCondSet( NFA *nfa, Condition *CondSet,  int *size )
     }
 //    CondSet = malloc( sizeof(Condition) * cacheSize ) ;
 //    isNullPointer( CondSet ) ;
-    /* 返回条件集合的大小 */
     *size = cacheSize ;
 
     for( i = 0; i < *size; i++ )
       CondSet[i] = cache[i];
-
+    */
 }
 
-bool isMatchCondition( Condition c, wchar_t a )
+bool isMatchCondition (Condition c, wchar_t a)
 {
+    /*
     int i ;
     if( c->matchContent )
     {
@@ -568,57 +520,55 @@ bool isMatchCondition( Condition c, wchar_t a )
         if( c->inMatchRange[i].from <= a && a <= c->inMatchRange[i].to )
             return false;
     
-    /* 若numOfInMatchRange大于0, 或者 inMatchContent不为空,
-     * 表明c不在[^...]的范围内，可以通行 */
     if( c->numOfInMatchRange > 0 || c->inMatchContent )
         return true;
 
     return false;
+    */
 }
 
 bool
-EqualCondition( Condition c1, Condition c2 )
+EqualCondition (Condition c1, Condition c2)
 {
-    wchar_t *a, *b;
-    int     i ;
-
-    if( c1->AllowedAnyChar != c2->AllowedAnyChar )
-      return false;
-
-    if( wstrcmp_allow_nullpointer( c1->matchContent,c2->matchContent )!=0 )
-      return false;
-    if( wstrcmp_allow_nullpointer( c1->inMatchContent,c2->inMatchContent)!=0 )
-      return false;
-
-    if( c1->numOfMatchRange != c2->numOfMatchRange )
-      return false;
-
-    for( i=0; i < c1->numOfMatchRange; i++ )
-      if( !RangeEqual( c1->matchRange[i],c2->matchRange[i] ))
-        return false;
-
-    if( c1->numOfInMatchRange != c2->numOfInMatchRange )
-      return false;
-    
-    for( i=0; i < c1->numOfInMatchRange; i++ )
-      if( !RangeEqual( c1->inMatchRange[i],c2->inMatchRange[i] ))
-        return false;
-
     return true;
 }
 
 int
-Status_Transfer_Under_Condition(const Status *status, Condition cond)
+Status_Transfer_Under_Condition(const Status status, Condition cond)
 {
+    /*
     int i;
     for(i=0; i < status->numOfOutEdges; i++ )
       if(EqualCondition( status->OutEdges[i], cond ))
         return status->OutEdges[i]->to_Status->ID;
     return -1;
+    */
 }
 
-void
-freeNFA( NFA *nfa )
+void freeNFA (NFA nfa)
 {
 
+}
+
+
+void printNFA (NFA nfa)
+{
+    int i;
+    Edge e;
+    Status s1, s2;
+    for (i=0; i<Array_length(nfa->edgeArray); i++)
+    {
+        e = Array_get (nfa->edgeArray, i);
+        s1 = getfromStatus (e);
+        s2 = gettoStatus (e);
+        wprintf(L"(%d, %d, ", getStatusID(s1), getStatusID(s2));
+        printEdge(e);
+        wprintf(L")");
+        if (isFinalStatus(s2))
+        {
+            wprintf(L"   (F)");
+        }
+        wprintf(L"\n");
+    }
+    wprintf(L"\n");
 }

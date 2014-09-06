@@ -4,7 +4,8 @@
 #include "Array.h"
 #define T Array_T
 
-struct T {
+struct T 
+{
     int length;
     int size;
     char *array;

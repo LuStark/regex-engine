@@ -16,5 +16,11 @@ extern void *Array_put (T array, int i, void *elem);
 extern void Array_resize(T array, int length);
 extern T    Array_copy (T array, int length);
 
+extern void Array_append(T array, void *elem);
+extern void 
+Array_copy_from_range (T toArray, int start1, T fromArray, int start2, int copylength);
+
+extern int sizeOfArray();
+
 #undef T
 #endif

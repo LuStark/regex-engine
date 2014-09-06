@@ -133,3 +133,8 @@ void Array_append(T array, void *elem)
         Array_put (array, array->length-1, elem);
     }
 }
+
+int sizeOfArray()
+{
+    return sizeof(struct Array_T);
+}

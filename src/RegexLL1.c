@@ -52,16 +52,18 @@ int error (wchar_t funcName[], wchar_t c)
     exit (1);
 }
 
-int LL1_non_special_wchar_t()
+pt_NFA  LL1_non_special_wchar_t()
 {
     int p;
     wchar_t c;
+    pt_NFA  p;
     
     c = regex[currentIndex];
     
     if (First_non_special[c] == 1)
     {
         match (c);
+        p = CreateOneNFA (c);
     }
     else
         error (L"LL1_noncharacter()", c);
@@ -69,10 +71,10 @@ int LL1_non_special_wchar_t()
     return p;
 }
 
-int LL1_escapecharacter()
+pt_NFA  LL1_escapecharacter()
 {
     wchar_t    c;
-    int  p;
+    pt_NFA  p;
 
     c = regex[currentIndex];
     if (c != '\\')
@@ -80,6 +82,7 @@ int LL1_escapecharacter()
 
     match ('\\');
     c = regex[currentIndex];
+    p = CreateOneNFA (c);
     match (c);
 
     //p = CreateOneNFA (c);
@@ -87,10 +90,10 @@ int LL1_escapecharacter()
     return p;
 }
 
-int LL1_character()
+pt_NFA  LL1_character()
 {
     wchar_t    c;
-    int  p; 
+    pt_NFA  p; 
    
     c = regex[currentIndex];
     if (First_character[c]==1)
@@ -162,16 +165,19 @@ int LL1_character_range()
 {
     wchar_t c;
     Range r, bufferRange[280];
-    int non, sizeBuffer;
+    int sizeBuffer;
     Status  *start, *end;
-    Edge    *rangeE;
+    Edge   e;
+    pt_NFA  p;
+    int     i;
 
     start = allocStatus ();
     end   = allocStatus ();
-    rangeE = allocEmptyEdge ();
+    e     = allocEmptyEdge ();
     
     match ('[');
-    non = LL1_choose_or_not();
+
+    setMatchRangeOrNot (e, LL1_choose_or_not());
 
     c = regex[currentIndex];
     sizeBuffer = 0;
@@ -185,15 +191,15 @@ int LL1_character_range()
             break;
     }
 
-    if (non == 1)
-    {
-    }
-    else
-    {
-
-    }
+    for (i=0; i<sizeBuffer; i++)
+        addRange (e, bufferRange[i]);
 
     match (']');
+
+    linkTwoStatus_by_AnEdge (start, end, e); 
+
+
+    return e;
 }
 
 int LL1_regex();
@@ -210,7 +216,9 @@ int LL1_re_top_level()
     }
     else if (c == '(')
     {
+        match ('(');
         LL1_regex();
+        match (')');
     }
     else if (c == '\\')
     {
@@ -293,10 +301,29 @@ int LL1_regex()
 
 int main ()
 {
+    int i;
     setlocale(LC_CTYPE, "");
+    
     init_FirstSet();
     init_FollowSet();
     getRegex();
 
     LL1_regex();
+
+    Edge e;
+
+    /*
+    Edge e;
+    e = allocEdge ();
+
+    Range r1 = {'A','Z'};
+    addRange (e, r1);
+
+    outputEdgeCrossTable (e);
+
+    for (i=0; i<128; i++)
+        if (crossEdge (e, i))
+            wprintf (L"%c\n", i);
+    */
+    return 0;
 }
