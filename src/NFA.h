@@ -32,7 +32,10 @@ extern int sizeOfEdge();
 extern S getfromStatus (E e);
 extern S gettoStatus (E e);
 
+extern void setEpsilon(E e);
 extern void outputEdgeCrossTable (E e);
+extern void copyEdge_without_Status (E to, E from);
+
 //-------------------Status 重构区--------------------
 
 /* 产生一个状态点 */
@@ -55,6 +58,9 @@ extern void appendOutEdge (S s, E e);
 
 extern bool  isFinalStatus (S s);
 extern int sizeOfStatus();
+
+extern void initInEdges(S s);
+extern void initOutEdges(S s);
 /* ------------------NFA 重构区 --------------------- */
 
 typedef struct NFA  *NFA;
@@ -80,17 +86,13 @@ extern NFA  Repeat_atleast_one (NFA);
 /* 可选的正则表达式 */
 extern NFA  Option (NFA);
 
-
+extern void adjustStatusEdges (NFA copyNFA, NFA nfa, int s_offset, int e_offset);
 extern void printNFA (NFA);
 
 
 /* 用一条边(edge)连结两个状态(status) */
 void 
 linkTwoStatus_by_AnEdge (Status from, Status to, Edge bridge);
-
-
-
-
 
 bool isMatchInEdge( wchar_t c,
                     E   e
