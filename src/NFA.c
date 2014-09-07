@@ -17,6 +17,39 @@ struct NFA
     Array_T     statusArray;
 };
 
+void adjustStatusID(NFA nfa)
+{
+    int i,n;
+    Status s;
+
+    n = Array_length(nfa->statusArray);
+    for (i=0; i<n; i++)
+    {
+        s = Array_get(nfa->statusArray, i);
+        setStatusID(s, i);
+    }
+    nfa->start = Array_get(nfa->statusArray, 0);
+    nfa->end = Array_get(nfa->statusArray, n-1);
+
+    ensureFinalStatus (nfa->end);
+}
+
+void linkTwoStatusInNFA (NFA nfa, int from, int to, int e)
+{
+    assert(nfa);
+    
+    Status  fromS, toS;
+    Edge    bridge;
+
+    fromS = Array_get (nfa->statusArray, from);
+    toS   = Array_get (nfa->statusArray, to);
+    
+    bridge = Array_get (nfa->edgeArray, e);
+    
+    linkTwoStatus_by_AnEdge (fromS, toS, bridge);
+}
+
+
 
 NFA CreateSingleNFA (wchar_t c)
 {
@@ -27,31 +60,19 @@ NFA CreateSingleNFA (wchar_t c)
     nfa = malloc (sizeof (struct NFA));
     assert(nfa); 
     
-    /* 初始化唯一的两个状态点 */
-    nfa -> start = allocStatus();
-    nfa -> end   = allocStatus();
-    
-    /* 初始化唯一的边 */
-    e = allocEdge();
-    setFromToStatus (e, nfa->start, nfa->end);
-    addCharacter (e, c);
-
-    setStatusID (nfa->start, 0);
-    appendOutEdge (nfa->start, e);
-
-    setStatusID (nfa->end, 1);
-    appendOutEdge (nfa->end, e);
-
-    ensureFinalStatus (nfa->end);
-
     /* 初始化nfa的Edge数组 */
     nfa->edgeArray = Array_new (1, sizeOfEdge());
-    Array_put (nfa->edgeArray, 0, e);
 
     /* 初始化nfa的Status状态数组 */
     nfa->statusArray = Array_new (2, sizeOfStatus());
-    Array_put (nfa->statusArray, 0, nfa->start);
-    Array_put (nfa->statusArray, 1, nfa->end);
+   
+    e = Array_get(nfa->edgeArray, 0);
+    addCharacter (e, c);
+    
+    linkTwoStatusInNFA(nfa,0,1,0);
+
+    adjustStatusID(nfa);
+    ensureFinalStatus (nfa->end);
 
     return nfa ;
 }
@@ -99,6 +120,8 @@ linkTwoStatus_by_AnEdge( Status fromS ,
     appendInEdge(toS, e);
 
 }
+
+
 
 NFA CopyNFA (NFA nfa)
 {
@@ -153,7 +176,7 @@ NFA CopyNFA (NFA nfa)
 // copyNFA中的顶点下标从s_offset开始计数，边下标从e_offset开始计数
 void adjustStatusEdges (NFA copyNFA, NFA nfa, int s_offset, int e_offset)
 {
-    int i, id;
+    int i, id, id2;
     Edge e, e_temp;
     Status s1, s2, fromS, toS;
     for (i=0; i < Array_length (nfa->edgeArray); i++)
@@ -165,23 +188,14 @@ void adjustStatusEdges (NFA copyNFA, NFA nfa, int s_offset, int e_offset)
         id = getStatusID (getfromStatus (e_temp));
         s1 = Array_get (copyNFA->statusArray, id+s_offset);
 
-        id = getStatusID (gettoStatus (e_temp));
-        s2 = Array_get (copyNFA->statusArray, id+s_offset);
+        id2 = getStatusID (gettoStatus (e_temp));
+        s2 = Array_get (copyNFA->statusArray, id2+s_offset);
+        if (id==id2)
+        {
+            wprintf(L"error!!!\n");
+        }
 
         linkTwoStatus_by_AnEdge (s1, s2, e);
-    }
-}
-
-void adjustStatusID(NFA nfa)
-{
-    int i,n;
-    Status s;
-
-    n = Array_length(nfa->statusArray);
-    for (i=0; i<n; i++)
-    {
-        s = Array_get(nfa->statusArray, i);
-        setStatusID(s, i);
     }
 }
 
@@ -206,7 +220,7 @@ NFA Link (NFA frontNFA, NFA toNFA )
     combined_NFA->end = Array_get(combined_NFA->statusArray, n-1);
     ensureFinalStatus(combined_NFA->end);
     
-    /* combined_NFA边集合 <=> 两个nfa以及连接它们的ε边*/
+    /* combined_NFA边集合 <=> 两个nfa以及连接它们的边ε*/
     n = Array_length(frontNFA->edgeArray) + Array_length(toNFA->edgeArray) + 1;
     combined_NFA->edgeArray = Array_new (n, sizeOfEdge());
     
@@ -231,218 +245,212 @@ NFA Link (NFA frontNFA, NFA toNFA )
     return combined_NFA ;
 }
 
+/*
+ *  nfa1 G: n1×e1    nfa2 G: n2×e2
+ *  以下是 nfa1 和 nfa2的联合 (记为combined_NFA)
+ *
+
+ *  (0号边)            ------    (e1+e2+2)号边
+ *    ————————————>  |  nfa1  | —————————————
+      |                ------               ｜
+      |                                     ｖ
+    -----                                 -----
+  | start | (0号顶点)                    | end | (n1+n2+1) 号顶点
+    -----                                 -----
+      |                                   　^
+      |                ------        　     ｜
+      ————————————>  |  nfa2  | ————————————
+    (1号边)            ------    (e1+e2+3)号边
+
+    
+    边顺序:     0号 
+                1号  
+                nfa1中的e1条边:    2, 3, ...  e1
+                nfa2中e2条边:      e1+2, e1+3, ..., e1+e2+1
+                (e1+e2+2)号边
+                (e1+e2+3)号边
+
+    顶点顺序:   start:  0号,  
+                nfa1中n1个顶点:     1, 2, 3, ..., n1
+                nfa2中n2个顶点:     n1+1, n1+2, ... n1+n2  
+                end :   n1+n2+1
+
+
+    以下算法关于combined_NFA的顶点边编排顺序如上所述
+ */
+
 NFA Union (NFA nfa1, NFA nfa2 )
 {
-    int i, j, n1, n2, n;
-    NFA     combineNFA, nfa1copy, nfa2copy ;
-    Status  start, end;
+    int i, j, n1, n2, n, e1, e2;
+    NFA     combined_NFA;
     Status  s;
 
-    Edge    e1_start, e2_start;
-    Edge    e1_end, e2_end;
     Edge    e;
 
-    nfa1copy = CopyNFA (nfa1);
-    nfa2copy = CopyNFA (nfa2);
-    cancelFinalStatus (nfa1copy->end);
-    cancelFinalStatus (nfa2copy->end);
+    /* 得到两个NFA 边(Edge)数 和 顶点(Status)数 */
+    n1 = Array_length (nfa1->statusArray);
+    n2 = Array_length (nfa2->statusArray);
+    e1 = Array_length (nfa1->edgeArray);
+    e2 = Array_length (nfa2->edgeArray);
 
-    start = allocStatus(); 
-    end   = allocStatus();
+    n = n1 + n2 + 2;
 
-    e1_start = allocEpsilonEdge();
-    e2_start = allocEpsilonEdge();
-    e1_end = allocEpsilonEdge();
-    e2_end = allocEpsilonEdge();
+    combined_NFA = malloc (sizeof (struct NFA));
+    assert(combined_NFA);
 
-    linkTwoStatus_by_AnEdge (start, nfa1copy->start, e1_start);
-    linkTwoStatus_by_AnEdge (start, nfa2copy->start, e2_start);
+    combined_NFA->statusArray = Array_new (n, sizeOfStatus());
+
+
+    /* 构造边集合, 即两个NFA的边数加上4条ε边 */
+    n = e1 + e2 + 4;
+    combined_NFA->edgeArray = Array_new (n, sizeOfEdge());
+
+    /* 提取0号边 */
+    e = Array_get (combined_NFA->edgeArray, 0);
+    setEpsilon (e);
+    linkTwoStatusInNFA (combined_NFA, 0, 1, 0);
     
-    linkTwoStatus_by_AnEdge (nfa1copy->end, end, e1_end);
-    linkTwoStatus_by_AnEdge (nfa2copy->end, end, e2_end);
+    adjustStatusEdges (combined_NFA, nfa1, 1, 2);
+     
+    e = Array_get (combined_NFA->edgeArray, 1);
+    setEpsilon (e);
+    linkTwoStatusInNFA (combined_NFA, 0, n1+1, 1);
 
-    combineNFA = malloc (sizeof (struct NFA));
-    assert(combineNFA);
-    combineNFA->start = start ;
-    combineNFA->end   = end ;
-    ensureFinalStatus (combineNFA->end);
+    adjustStatusEdges (combined_NFA, nfa2, n1+1, e1+2);
 
-    /* 构造合成nfa的状态数组 */
-    n1 = Array_length (nfa1copy->statusArray);
-    n2 = Array_length (nfa2copy->statusArray);
+    setEpsilon (Array_get (combined_NFA->edgeArray, e1+e2+2));
+    linkTwoStatusInNFA (combined_NFA, n1, n1+n2+1, e1+e2+2);
 
-    combineNFA->statusArray = Array_new(n1+n2+2, sizeOfStatus());
-    
-    /* 初始化nfa状态数组的第一个状态 */
-    Array_put (combineNFA->statusArray, 0, start);
-    
-    Array_copy_from_range (combineNFA->statusArray, 1, nfa1copy->statusArray, 0, n1);
-    Array_copy_from_range (combineNFA->statusArray, n1+1, nfa2copy->statusArray, 0, n2);
-    
-    Array_put (combineNFA->statusArray, n1+n2+1, end);
-    
+    setEpsilon (Array_get (combined_NFA->edgeArray, e1+e2+3));
+    linkTwoStatusInNFA (combined_NFA, n1+n2, n1+n2+1, e1+e2+3);
 
-    // 储存边集合 
-    n1 = Array_length (nfa1copy->edgeArray);
-    n2 = Array_length (nfa2copy->edgeArray);
-    combineNFA->edgeArray = Array_new (n1+n2+4, sizeOfEdge());
-
-    Array_put (combineNFA->edgeArray, 0, e1_start);
-    Array_put (combineNFA->edgeArray, 1, e2_start);
-    
-    Array_copy_from_range (combineNFA->edgeArray, 2, nfa1copy->edgeArray, 0, n1);
-    Array_copy_from_range (combineNFA->edgeArray, n1+2, nfa2copy->edgeArray, 0, n2);
-
-    Array_put (combineNFA->edgeArray, n1+n2+2, e1_end);
-    Array_put (combineNFA->edgeArray, n1+n2+3, e2_end);
-    
-    /* ID 问题 */
-    n = Array_length(combineNFA->statusArray);
-    for (i=0; i<n; i++)
-    {
-        s = Array_get (combineNFA->statusArray, i);
-        setStatusID (s, i);
-    }
-
-    return combineNFA ;
+    adjustStatusID (combined_NFA);
+    ensureFinalStatus (combined_NFA->end);
+    return combined_NFA ;
 }
 
+/*
+ *  nfa1 G: n×e
+ *  以下是 求nfa闭包
+ *
+                       e+2 号边
+                 —————————————————————
+                ｜                   ｜
+                ｜                   ｜       
+ *  (0号边)      —>    ------   —————— 
+ *    ————————————>  |  nfa  | —————————————————
+      |                ------        e+3号边    ｜
+      |                                         ｖ
+    -----                                     -----
+  | start | (0号顶点)                        | end | (n+1) 号顶点
+    -----                                     -----
+　　  |                                         ｜
+    　———————————————————————————————————————————
+                       1号边
+    
+    边顺序:     0号 
+                1号  
+                nfa中的e条边:    2, 3, ...  e
+                e+2号边
+                (e+3)号边
+
+    顶点顺序:   start:  0号,  
+                nfa中n个顶点:     1, 2, 3, ..., n
+                end :   n+1
+
+
+ */
 NFA Closure(NFA nfa)
 {
-//    Edge *start_to_nfastart, *nfaEnd_to_nfastart, *nfaEnd_to_end, *start_to_end;
-    // 把nfa的起始状态记为ns, nfa的终止状态: ne
-    // 新nfa的起始状态 s, 新nfa终止状态 e,
-
-    Edge    s2ns, ne2ns, ne2e, s2e;
-
-    Status  start, end ;
-    Status  temp, s;
-
-    NFA     nfacopy;
     NFA     newnfa;
 
-    int i, numE, numS, n;
-    numE = numS = 0 ;
+    int n, e;
 
-    nfacopy = CopyNFA(nfa);
-   
     newnfa = malloc (sizeof (struct NFA));
     assert (newnfa);
 
     /* 构造边数组 */
-    // newnfa->numOfEdges = nfacopy -> numOfEdges + 4;
-    // newnfa -> edgeArray = malloc( sizeof(Edge*) * newnfa->numOfEdges );
-    numE = Array_length (nfacopy->edgeArray);
-    newnfa->edgeArray = Array_new (numE+4, sizeOfEdge());
+    e = Array_length (nfa->edgeArray);
+    newnfa->edgeArray = Array_new (e+4, sizeOfEdge());
     
-    /* 构造状态数组 */
     // 得到nfa状态个数
-    numS = Array_length (nfacopy->statusArray);
-    newnfa->statusArray = Array_new (numS+2,sizeOfStatus());
+    n = Array_length (nfa->statusArray);
+    newnfa->statusArray = Array_new (n+2,sizeOfStatus());
 
-    /* 构造初始，终止状态, 并加入到Status数组上 */
-    newnfa->start = allocStatus();
-    Array_put (newnfa->statusArray, 0, newnfa->start);
-    Array_copy_from_range (newnfa->statusArray, 1, nfacopy->statusArray, 0, numS);
-    Array_put (newnfa->statusArray, numS+1, newnfa->end);
+    /* 提取0号边 */
+    setEpsilon (Array_get (newnfa->edgeArray, 0));
+    linkTwoStatusInNFA (newnfa, 0, 1, 0);
 
-    /* 初始状态到原nfa的start */
-    s2ns = allocEpsilonEdge();
-    linkTwoStatus_by_AnEdge (newnfa->start, nfacopy->start, s2ns);
-    Array_put (newnfa->edgeArray, 0, s2ns);
+    /* 提取1号边 */
+    setEpsilon (Array_get (newnfa->edgeArray, 1));
+    linkTwoStatusInNFA (newnfa, 0, n+1, 1);
 
-    Array_copy_from_range (newnfa->edgeArray, 1, nfacopy->edgeArray, 0, numE);
+    /* 在newnfa中构造与nfa对应一样的图结构 */
+    adjustStatusEdges (newnfa, nfa, 1, 2);
 
-    /* 原nfa的end -> 原nfa的start */
-    ne2ns = allocEpsilonEdge();
-    linkTwoStatus_by_AnEdge (nfacopy->end, nfacopy->start, ne2ns);
-    Array_put (newnfa->edgeArray, numE+1, ne2ns);
+    /* 提取e+2号边 */
+    setEpsilon (Array_get (newnfa->edgeArray, e+2));
+    linkTwoStatusInNFA (newnfa, n, 1, e+2);
 
-    /* 原nfa的end状态 -> 新nfa的end状态 */
-    ne2e  = allocEpsilonEdge();
-    linkTwoStatus_by_AnEdge (nfacopy->end, newnfa->end, ne2e);
-    Array_put (newnfa->edgeArray, numE+2, ne2e);
+    /* 提取e+3号边 */
+    setEpsilon (Array_get (newnfa->edgeArray, e+3));
+    linkTwoStatusInNFA (newnfa, n, n+1, e+3);
     
-    /* 新nfa的start -> 新nfa的end */
-    s2e = allocEpsilonEdge();
-    linkTwoStatus_by_AnEdge (newnfa->start, newnfa->end, s2e);
-    Array_put (newnfa->edgeArray, numE+3, s2e);
-
-    /* ID 问题 */
-    n = Array_length(newnfa->statusArray);
-    for (i=0; i<n; i++)
-    {
-        s = Array_get (newnfa->statusArray, i);
-        setStatusID (s, i);
-    }
-
+    adjustStatusID (newnfa); 
+    
     return newnfa;
 }
 
+/*
+ *  nfa1 G: n×e
+ *  以下是 求nfa 0-1闭包
+ *
+ *  (0号边)            ------ 
+ *    ————————————>  |  nfa  | —————————————————
+      |                ------        e+2号边    ｜
+      |                                         ｖ
+    -----                                     -----
+  | start | (0号顶点)                        | end | (n+1) 号顶点
+    -----                                     -----
+　　  |                                         ｜
+    　———————————————————————————————————————————
+                       1号边
+
+ */
 NFA Option (NFA nfa)
 {
-//    Edge *start_to_nfastart, *nfaEnd_to_nfastart, *nfaEnd_to_end, *start_to_end;
-    // 把nfa的起始状态记为ns, nfa的终止状态: ne
-    // 新nfa的起始状态 s, 新nfa终止状态 e,
-
-    Edge    s2ns, ne2ns, ne2e, s2e;
-
-    Status  start, end ;
-    Status  temp, s;
-
-    NFA     nfacopy;
     NFA     newnfa;
 
-    int i, numE, numS, n;
-    numE = numS = 0 ;
+    int n, e;
 
-    nfacopy = CopyNFA(nfa);
-   
     newnfa = malloc (sizeof (struct NFA));
     assert (newnfa);
 
     /* 构造边数组 */
-    // newnfa->numOfEdges = nfacopy -> numOfEdges + 4;
-    // newnfa -> edgeArray = malloc( sizeof(Edge*) * newnfa->numOfEdges );
-    numE = Array_length (nfacopy->edgeArray);
-    newnfa->edgeArray = Array_new (numE+3, sizeOfEdge());
+    e = Array_length (nfa->edgeArray);
+    newnfa->edgeArray = Array_new (e+3, sizeOfEdge());
     
-    /* 构造状态数组 */
     // 得到nfa状态个数
-    numS = Array_length (nfacopy->statusArray);
-    newnfa->statusArray = Array_new (numS+2,sizeOfStatus());
+    n = Array_length (nfa->statusArray);
+    newnfa->statusArray = Array_new (n+2,sizeOfStatus());
 
-    /* 构造初始，终止状态, 并加入到Status数组上 */
-    newnfa->start = allocStatus();
-    Array_put (newnfa->statusArray, 0, newnfa->start);
-    Array_copy_from_range (newnfa->statusArray, 1, nfacopy->statusArray, 0, numS);
-    Array_put (newnfa->statusArray, numS+1, newnfa->end);
+    /* 提取0号边 */
+    setEpsilon (Array_get (newnfa->edgeArray, 0));
+    linkTwoStatusInNFA (newnfa, 0, 1, 0);
 
-    /* 初始状态到原nfa的start */
-    s2ns = allocEpsilonEdge();
-    linkTwoStatus_by_AnEdge (newnfa->start, nfacopy->start, s2ns);
-    Array_put (newnfa->edgeArray, 0, s2ns);
+    /* 提取1号边 */
+    setEpsilon (Array_get (newnfa->edgeArray, 1));
+    linkTwoStatusInNFA (newnfa, 0, n+1, 1);
 
-    Array_copy_from_range (newnfa->edgeArray, 1, nfacopy->edgeArray, 0, numE);
+    /* 在newnfa中构造与nfa对应一样的图结构 */
+    adjustStatusEdges (newnfa, nfa, 1, 2);
 
-    /* 原nfa的end状态 -> 新nfa的end状态 */
-    ne2e  = allocEpsilonEdge();
-    linkTwoStatus_by_AnEdge (nfacopy->end, newnfa->end, ne2e);
-    Array_put (newnfa->edgeArray, numE+1, ne2e);
+    /* 提取e+2号边 */
+    setEpsilon (Array_get (newnfa->edgeArray, e+2));
+    linkTwoStatusInNFA (newnfa, n, n+1, e+2);
+
+    adjustStatusID (newnfa); 
     
-    /* 新nfa的start -> 新nfa的end */
-    s2e = allocEpsilonEdge();
-    linkTwoStatus_by_AnEdge (newnfa->start, newnfa->end, s2e);
-    Array_put (newnfa->edgeArray, numE+2, ne2e);
-
-    /* ID 问题 */
-    n = Array_length(newnfa->statusArray);
-    for (i=0; i<n; i++)
-    {
-        s = Array_get (newnfa->statusArray, i);
-        setStatusID (s, i);
-    }
-
     return newnfa;
 }
 
@@ -456,8 +464,6 @@ NFA Repeat_atleast_one( NFA nfa )
     newnfa = Link( nfa1, nfa2 ) ;
     return newnfa;
 }
-
-
 
 void RangeCopy(
                 Range *toRangeArray,
