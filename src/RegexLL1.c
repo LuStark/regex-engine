@@ -4,6 +4,8 @@
 #include <wchar.h>
 #include "FirstFollow.h"
 #include "NFA.h"
+#include "Edge.h"
+#include "Status.h"
 #include <locale.h>
 
 
@@ -21,11 +23,13 @@ void getRegex ()
     i = 0;
     while ((c=getwchar()) != EOF)
         regex[i++] = c;
+    if (i>0 && regex[i-1]=='\n')
+        i--;
     regex[i++] = '$';
     regex[i] = '\0';
 }
 
-int match (wchar_t obj)
+void match (wchar_t obj)
 {
     if (LL1_finished_symbol==1)
         return;
@@ -52,18 +56,17 @@ int error (wchar_t funcName[], wchar_t c)
     exit (1);
 }
 
-pt_NFA  LL1_non_special_wchar_t()
+NFA  LL1_non_special_wchar_t()
 {
-    int p;
     wchar_t c;
-    pt_NFA  p;
+    NFA  p;
     
     c = regex[currentIndex];
     
     if (First_non_special[c] == 1)
     {
         match (c);
-        p = CreateOneNFA (c);
+        p = CreateSingleNFA (c);
     }
     else
         error (L"LL1_noncharacter()", c);
@@ -71,10 +74,10 @@ pt_NFA  LL1_non_special_wchar_t()
     return p;
 }
 
-pt_NFA  LL1_escapecharacter()
+NFA  LL1_escapecharacter()
 {
     wchar_t    c;
-    pt_NFA  p;
+    NFA  p;
 
     c = regex[currentIndex];
     if (c != '\\')
@@ -82,18 +85,16 @@ pt_NFA  LL1_escapecharacter()
 
     match ('\\');
     c = regex[currentIndex];
-    p = CreateOneNFA (c);
+    p = CreateSingleNFA (c);
     match (c);
-
-    //p = CreateOneNFA (c);
 
     return p;
 }
 
-pt_NFA  LL1_character()
+NFA  LL1_character()
 {
     wchar_t    c;
-    pt_NFA  p; 
+    NFA  p; 
    
     c = regex[currentIndex];
     if (First_character[c]==1)
@@ -161,19 +162,21 @@ Range LL1_range()
     return r;
 }
 
-int LL1_character_range()
+NFA LL1_character_range()
 {
     wchar_t c;
     Range r, bufferRange[280];
     int sizeBuffer;
-    Status  *start, *end;
+    Status  start, end;
     Edge   e;
-    pt_NFA  p;
+    NFA  p;
     int     i;
 
-    start = allocStatus ();
-    end   = allocStatus ();
-    e     = allocEmptyEdge ();
+    // 创建两个顶点一条边的NFA
+    p = CreateNFA (2,1);
+    start = getStartStatus (p);
+    end   = getEndStatus (p);
+    e     = getEdge (p,0);
     
     match ('[');
 
@@ -198,97 +201,122 @@ int LL1_character_range()
 
     linkTwoStatus_by_AnEdge (start, end, e); 
 
-
-    return e;
+    return p;
 }
 
-int LL1_regex();
+//declaration
+NFA LL1_regex();
 
-int LL1_re_top_level()
+NFA LL1_re_top_level()
 {
+    NFA p;
     wchar_t c;
 
     c = regex[currentIndex];
     
     if (First_non_special[c] == 1)
     {
-        LL1_non_special_wchar_t();
+        p = LL1_non_special_wchar_t();
     }
     else if (c == '(')
     {
         match ('(');
-        LL1_regex();
+        p = LL1_regex();
         match (')');
     }
     else if (c == '\\')
     {
-        LL1_escapecharacter();
+        p = LL1_escapecharacter();
     }
     else if (c == '[')
     {
-        LL1_character_range();
+        p = LL1_character_range();
     }
     else
     {
         error (L"re_top_level()", c);
     }
+
+    return p;
 }
 
-int LL1_closure_op()
+wchar_t LL1_closure_op()
 {
     wchar_t c;
     c = regex[currentIndex];
 
     match (c);
-
+    return c;
 }
 
-int LL1_re_closure_level()
+NFA LL1_re_closure_level()
 {
-    wchar_t c;
+    wchar_t c, op;
+    NFA nfa, nfa2;
     
-    LL1_re_top_level();
+    nfa = LL1_re_top_level();
     c = regex[currentIndex];
     if (First_closure_op[c] == 1)
     {
-        LL1_closure_op();
+        op = LL1_closure_op();
+        if (op=='*')
+            nfa2 = Closure (nfa);
+        else if (op=='+')
+            nfa2 = Repeat_atleast_one(nfa);
+        else if (op=='?')
+            nfa2 = Option (nfa);
+        freeNFA(&nfa);
+        nfa = nfa2;
     }
+
+    return nfa;
 }
 
-int LL1_re_link_level()
+NFA LL1_re_link_level()
 {
     wchar_t c;
+    NFA nfa1, nfa2, nfa;
 
-    LL1_re_closure_level();
+    nfa1 = LL1_re_closure_level();
     
     c = regex[currentIndex];
     while (First_re_closure_level[c] == 1)
     {
-        LL1_re_closure_level();
+        nfa2 = LL1_re_closure_level();
         c = regex[currentIndex];
+        nfa = Link(nfa1,nfa2);
+        freeNFA (&nfa1);
+        nfa1 = nfa;
     }
 
+    return nfa1;
 }
 
-int LL1_re_union_level()
+NFA LL1_re_union_level()
 {
     wchar_t c;
+    NFA nfa1, nfa2, nfa;
 
-    LL1_re_link_level();
+    nfa1 = LL1_re_link_level();
     c = regex[currentIndex];
     while (c == '|')
     {
         match ('|');
-        LL1_re_link_level();
+        nfa2 = LL1_re_link_level();
+        nfa = Union(nfa1, nfa2);
+        freeNFA (&nfa1);
+        nfa1 = nfa;
         c = regex[currentIndex];
     }
+    return nfa1;
 }
 
-int LL1_regex()
+NFA LL1_regex()
 {
     wchar_t c;
+    NFA nfa;
 
-    LL1_re_union_level();
+    nfa = LL1_re_union_level();
 
     if (!LL1_finished_symbol)
     {
@@ -297,33 +325,23 @@ int LL1_regex()
             putwchar (c);
         exit(1);
     }
+
+    return nfa;
 }
 
 int main ()
 {
     int i;
+    NFA nfa;
     setlocale(LC_CTYPE, "");
     
     init_FirstSet();
     init_FollowSet();
     getRegex();
 
-    LL1_regex();
+    nfa = LL1_regex();
 
-    Edge e;
+    printNFA (nfa);
 
-    /*
-    Edge e;
-    e = allocEdge ();
-
-    Range r1 = {'A','Z'};
-    addRange (e, r1);
-
-    outputEdgeCrossTable (e);
-
-    for (i=0; i<128; i++)
-        if (crossEdge (e, i))
-            wprintf (L"%c\n", i);
-    */
     return 0;
 }

@@ -6,6 +6,7 @@
 
 #define T Array_T
 
+
 T Array_new (int length, int size)
 {
     T array;
@@ -34,12 +35,14 @@ void ArrayRep_init (T array, int length, int size, void *ary)
 
 }
 
+
 void Array_free(T *array)
 {
     assert(array && *array);
     free ((*array)->array);
     free (*array);
 }
+
 
 void *Array_get(T array, int i)
 {
@@ -133,6 +136,17 @@ void Array_append(T array, void *elem)
         Array_put (array, array->length-1, elem);
     }
 }
+
+/*
+void Array_free (T array)
+{
+    assert (array);
+    if (array->array==NULL)
+        return;
+    free(array->array);
+    array->array=NULL;
+}
+*/
 
 int sizeOfArray()
 {

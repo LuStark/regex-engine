@@ -6,18 +6,14 @@
 #include <wchar.h>
 #include <assert.h>
 #include "Array.h"
-#include "ArrayRep.h"
+#include "automaton.h"
 
-typedef struct NFA *NFA;
+#include "Edge.h"
+#include "Status.h"
 
-struct NFA
-{
-    Status      start, end;
-    Array_T     edgeArray;
-    Array_T     statusArray;
-};
 
-void adjustStatusID(NFA nfa)
+
+static void adjustStatusID(NFA nfa)
 {
     int i,n;
     Status s;
@@ -49,7 +45,27 @@ void linkTwoStatusInNFA (NFA nfa, int from, int to, int e)
     linkTwoStatus_by_AnEdge (fromS, toS, bridge);
 }
 
+NFA CreateNFA (int n, int e)
+{
+    assert(n<=0);
+    assert(e<0);
+    
+    NFA p;
+    p = malloc (sizeof (struct Automaton));
+    assert (p);
+    if (e>0)
+        p->edgeArray = Array_new(e, sizeOfEdge());
+    p->statusArray = Array_new(n, sizeOfStatus()); 
+    if (n==1)
+        p->start = p->end = Array_get(p->statusArray, 0);
+    else
+    {
+        p->start = Array_get(p->statusArray,0);
+        p->end = Array_get(p->statusArray,n-1);
+    }
 
+    return p;
+}
 
 NFA CreateSingleNFA (wchar_t c)
 {
@@ -57,7 +73,7 @@ NFA CreateSingleNFA (wchar_t c)
     
     Edge e ;
 
-    nfa = malloc (sizeof (struct NFA));
+    nfa = malloc (sizeof (struct Automaton));
     assert(nfa); 
     
     /* 初始化nfa的Edge数组 */
@@ -81,7 +97,7 @@ NFA CreateNFA_without_edge()
 {
     NFA  nfa ;
     
-    nfa = malloc (sizeof (struct NFA));
+    nfa = malloc (sizeof (struct Automaton));
     assert(nfa); 
     
     /* 初始化唯一的两个状态点 */
@@ -100,6 +116,31 @@ NFA CreateNFA_without_edge()
 
     return nfa ;
 }
+
+Status getStartStatus (NFA nfa)
+{
+    assert(nfa);
+    assert(nfa->start);
+    return nfa->start;
+}
+Status getEndStatus (NFA nfa)
+{
+    assert(nfa);
+    assert(nfa->end);
+    return nfa->end;
+}
+
+Edge getEdge (NFA nfa, int i)
+{
+    assert(nfa);
+    assert(nfa->edgeArray);
+    assert(i<Array_length(nfa->edgeArray) && i>=0);
+
+    return Array_get (nfa->edgeArray, i);
+    
+}
+
+
 
 void 
 linkTwoStatus_by_AnEdge( Status fromS , 
@@ -120,7 +161,6 @@ linkTwoStatus_by_AnEdge( Status fromS ,
     appendInEdge(toS, e);
 
 }
-
 
 
 NFA CopyNFA (NFA nfa)
@@ -174,7 +214,7 @@ NFA CopyNFA (NFA nfa)
 
 // 根据nfa中图结构，为copyNFA构建一样的图结构，其中
 // copyNFA中的顶点下标从s_offset开始计数，边下标从e_offset开始计数
-void adjustStatusEdges (NFA copyNFA, NFA nfa, int s_offset, int e_offset)
+static void adjustStatusEdges (NFA copyNFA, NFA nfa, int s_offset, int e_offset)
 {
     int i, id, id2;
     Edge e, e_temp;
@@ -209,7 +249,7 @@ NFA Link (NFA frontNFA, NFA toNFA )
     Status s, s1, s2;
 
     
-    combined_NFA = malloc (sizeof (struct NFA));
+    combined_NFA = malloc (sizeof (struct Automaton));
     assert(combined_NFA);
 
     /* 构造combined_NFA所有状态 */
@@ -295,7 +335,7 @@ NFA Union (NFA nfa1, NFA nfa2 )
 
     n = n1 + n2 + 2;
 
-    combined_NFA = malloc (sizeof (struct NFA));
+    combined_NFA = malloc (sizeof (struct Automaton));
     assert(combined_NFA);
 
     combined_NFA->statusArray = Array_new (n, sizeOfStatus());
@@ -366,7 +406,7 @@ NFA Closure(NFA nfa)
 
     int n, e;
 
-    newnfa = malloc (sizeof (struct NFA));
+    newnfa = malloc (sizeof (struct Automaton));
     assert (newnfa);
 
     /* 构造边数组 */
@@ -423,7 +463,7 @@ NFA Option (NFA nfa)
 
     int n, e;
 
-    newnfa = malloc (sizeof (struct NFA));
+    newnfa = malloc (sizeof (struct Automaton));
     assert (newnfa);
 
     /* 构造边数组 */
@@ -576,11 +616,14 @@ Status_Transfer_Under_Condition(const Status status, Condition cond)
     */
 }
 
-void freeNFA (NFA nfa)
+void freeNFA (NFA *nfa)
 {
-
+    assert(*nfa);
+    Array_free (&((*nfa)->statusArray));
+    Array_free (&((*nfa)->edgeArray));
+    free (*nfa);
+    *nfa=NULL;
 }
-
 
 void printNFA (NFA nfa)
 {

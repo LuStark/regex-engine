@@ -4,72 +4,22 @@
 #include "Array.h"
 #include "typedef.h"
 #include <stdbool.h>
+#include "Edge.h"
+#include "Status.h"
 
-// -----------------Edge 重构区 -------------------
-#define E Edge
-typedef struct E *E;
-#define S   Status
-typedef struct S *S;
-typedef E   Condition;
 
-extern E    allocEdge ();
-extern E    allocEpsilonEdge();
+typedef struct Automaton *NFA;
 
-extern void addCharacter (E e, wchar_t c);
-extern void addRange (E e, Range r);
-extern int  crossEdge (E e, wchar_t c);
-extern void setMatchRangeOrNot (E e, int);
-
-extern void setFromToStatus (E e, Status from, Status to);
-
-extern bool EqualCondition (E, E); 
-
-extern void printEdge (E);
-extern E    CopyEdge (E);
-extern void freeEdge (E);
-
-extern int sizeOfEdge();
-extern S getfromStatus (E e);
-extern S gettoStatus (E e);
-
-extern void setEpsilon(E e);
-extern void outputEdgeCrossTable (E e);
-extern void copyEdge_without_Status (E to, E from);
-
-//-------------------Status 重构区--------------------
-
-/* 产生一个状态点 */
-extern S    allocStatus ();
-
-extern void outputStatus (S);
-// 调试专用函数
-extern S    nextStatus (S, wchar_t);
-
-extern void setStatusID (S s, int id);
-
-extern Array_T getInEdges(S s);
-extern Array_T getOutEdges(S s);
-
-extern int  getStatusID(S s);
-extern void ensureFinalStatus (S s);
-extern void cancelFinalStatus (S s);
-extern void appendInEdge (S s, E e);
-extern void appendOutEdge (S s, E e);
-
-extern bool  isFinalStatus (S s);
-extern int sizeOfStatus();
-
-extern void initInEdges(S s);
-extern void initOutEdges(S s);
-/* ------------------NFA 重构区 --------------------- */
-
-typedef struct NFA  *NFA;
-
+extern NFA  CreateNFA(int n, int e);
 /* 根据匹配单个的字符创建只有一条边两个状态的NFA */
 extern NFA  CreateSingleNFA (wchar_t c);
 
+extern Status   getStartStatus (NFA);
+extern Status   getEndStatus (NFA);
+extern Edge     getEdge (NFA nfa, int i);
+
 /* 创建无边的NFA。 */
-extern NFA CreateNFA_without_edge ();
+extern NFA  CreateNFA_without_edge ();
 
 /* 连结前后两个NFA */
 extern NFA  Link (NFA, NFA);
@@ -86,7 +36,6 @@ extern NFA  Repeat_atleast_one (NFA);
 /* 可选的正则表达式 */
 extern NFA  Option (NFA);
 
-extern void adjustStatusEdges (NFA copyNFA, NFA nfa, int s_offset, int e_offset);
 extern void printNFA (NFA);
 
 
@@ -95,13 +44,11 @@ void
 linkTwoStatus_by_AnEdge (Status from, Status to, Edge bridge);
 
 bool isMatchInEdge( wchar_t c,
-                    E   e
+                    Edge   e
                     );
 
-void printNFA   (NFA );
 
 NFA  CopyNFA (NFA);
-
 
 /* 第三个参数: 数组大小; */
 void RangeCopy (Range* ,Range *,int );
@@ -116,16 +63,13 @@ bool
 itemInSet( int id, int Set[], int size );
 
 void 
-generateCondSet (NFA, E*, int* );
-
+generateCondSet (NFA, Edge*, int* );
 
 
 extern int  
-Status_Transfer_Under_Condition(const Status status, E cond);
+Status_Transfer_Under_Condition(const Status status, Edge cond);
 
+extern void freeNFA (NFA*);
 
-extern void freeNFA (NFA nfa);
-
-
-#undef E
+#undef S
 #endif

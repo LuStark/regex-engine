@@ -5,8 +5,6 @@
 typedef struct T *T;
 
 extern T    Array_new (int length, int size);
-extern void Array_free(T *array);
-
 extern int  Array_length(T array);
 extern int  Array_size  (T array);
 
@@ -21,6 +19,7 @@ extern void
 Array_copy_from_range (T toArray, int start1, T fromArray, int start2, int copylength);
 
 extern int sizeOfArray();
+extern void Array_free (T *array);
 
 
 #undef T
