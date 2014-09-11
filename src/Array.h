@@ -21,6 +21,7 @@ Array_copy_from_range (T toArray, int start1, T fromArray, int start2, int copyl
 extern int sizeOfArray();
 extern void Array_free (T *array);
 
+extern void setEmptyPt(T array);
 
 #undef T
 #endif

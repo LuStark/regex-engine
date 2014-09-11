@@ -199,7 +199,7 @@ NFA LL1_character_range()
 
     match (']');
 
-    linkTwoStatus_by_AnEdge (start, end, e); 
+    linkTwoStatusInNFA (p, 0, 1, 0);
 
     return p;
 }
@@ -265,7 +265,8 @@ NFA LL1_re_closure_level()
             nfa2 = Repeat_atleast_one(nfa);
         else if (op=='?')
             nfa2 = Option (nfa);
-        freeNFA(&nfa);
+        else
+            wprintf(L"无法识别的闭包运算符\n");
         nfa = nfa2;
     }
 
@@ -283,9 +284,9 @@ NFA LL1_re_link_level()
     while (First_re_closure_level[c] == 1)
     {
         nfa2 = LL1_re_closure_level();
+        //printNFA(nfa2);
         c = regex[currentIndex];
-        nfa = Link(nfa1,nfa2);
-        freeNFA (&nfa1);
+        nfa = Link(nfa1, nfa2);
         nfa1 = nfa;
     }
 
@@ -304,7 +305,6 @@ NFA LL1_re_union_level()
         match ('|');
         nfa2 = LL1_re_link_level();
         nfa = Union(nfa1, nfa2);
-        freeNFA (&nfa1);
         nfa1 = nfa;
         c = regex[currentIndex];
     }

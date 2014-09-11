@@ -18,6 +18,8 @@ extern Status   getStartStatus (NFA);
 extern Status   getEndStatus (NFA);
 extern Edge     getEdge (NFA nfa, int i);
 
+extern void linkTwoStatusInNFA (NFA nfa, int from, int to, int e);
+
 /* 创建无边的NFA。 */
 extern NFA  CreateNFA_without_edge ();
 
@@ -40,8 +42,8 @@ extern void printNFA (NFA);
 
 
 /* 用一条边(edge)连结两个状态(status) */
-void 
-linkTwoStatus_by_AnEdge (Status from, Status to, Edge bridge);
+//void 
+//linkTwoStatus_by_AnEdge (int, int, int);
 
 bool isMatchInEdge( wchar_t c,
                     Edge   e
@@ -69,7 +71,7 @@ generateCondSet (NFA, Edge*, int* );
 extern int  
 Status_Transfer_Under_Condition(const Status status, Edge cond);
 
-extern void freeNFA (NFA*);
+extern void freeNFA (NFA);
 
 #undef S
 #endif

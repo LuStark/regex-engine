@@ -40,9 +40,16 @@ void Array_free(T *array)
 {
     assert(array && *array);
     free ((*array)->array);
+    (*array)->array = NULL;
     free (*array);
+    (*array)->length = 0;
+    (*array)=NULL;
 }
 
+void setEmptyPt(T array)
+{
+    array->array=NULL;
+}
 
 void *Array_get(T array, int i)
 {
@@ -83,6 +90,7 @@ void Array_resize(T array, int length)
     else
         array->array = realloc(array->array, length*array->size);
     array->length = length;
+//    array->array[array->size*array->length] = '\0';
 }
 
 T Array_copy(T array, int length)
