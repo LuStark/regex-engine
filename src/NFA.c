@@ -61,15 +61,15 @@ void linkTwoStatusInNFA (NFA nfa, int from, int to, int e)
 
 NFA CreateNFA (int n, int e)
 {
-    assert(n<=0);
-    assert(e<0);
+    assert(n>0);
+    assert(e>=0);
     
     NFA p;
     p = malloc (sizeof (struct Automaton));
     assert (p);
     if (e>0)
-        p->edgeArray = Array_new(e, sizeOfEdge());
-    p->statusArray = Array_new(n, sizeOfStatus()); 
+        p->edgeArray = allocEdgeArray(e);
+    p->statusArray = allocStatusArray(n); 
     if (n==1)
         p->start = p->end = Array_get(p->statusArray, 0);
     else
@@ -77,6 +77,7 @@ NFA CreateNFA (int n, int e)
         p->start = Array_get(p->statusArray,0);
         p->end = Array_get(p->statusArray,n-1);
     }
+    adjustStatusID(p);
 
     return p;
 }
