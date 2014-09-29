@@ -132,7 +132,7 @@ void Array_append(T array, void *elem)
 {
     assert(array);
 
-    if (array->length==0)
+    if (array->length == 0)
     {
         array->array = malloc (1*array->size);
         array->length = 1;

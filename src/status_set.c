@@ -55,12 +55,7 @@ getEpsilonClosure( NFA *nfa, int statusID )
 }
 
 StatusSet     
-StatusSet_Transfer( 
-                    NFA *nfa, 
-                    SingleStatusSet Sets[], 
-                    StatusSet currentSet, 
-                    Condition cond 
-                )
+StatusSet_Transfer (NFA *nfa, SingleStatusSet Sets[], StatusSet currentSet, Condition cond)
 {
     int     i,  status_ID, t_ID ;
     int     transfer_status_ID;     // 记录转换后状态的ID

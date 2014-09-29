@@ -13,52 +13,6 @@
 
 
 
-static void adjustStatusID(NFA nfa)
-{
-    int i,n;
-    Status s;
-
-    n = Array_length(nfa->statusArray);
-    for (i=0; i<n; i++)
-    {
-        s = Array_get(nfa->statusArray, i);
-        setStatusID(s, i);
-    }
-    nfa->start = Array_get(nfa->statusArray, 0);
-    nfa->end = Array_get(nfa->statusArray, n-1);
-
-    ensureFinalStatus (nfa->end);
-}
-
-void linkTwoStatusInNFA (NFA nfa, int from, int to, int e)
-{
-    assert(nfa);
-    
-    Status  fromS, toS;
-    Edge    bridge;
-    Array_T   Edges;
-
-    fromS = Array_get (nfa->statusArray, from);
-    toS   = Array_get (nfa->statusArray, to);
-    
-    bridge = Array_get (nfa->edgeArray, e);
-    
-    assert(fromS);
-    assert(toS);
-    assert(bridge);
-    setFromToStatus (bridge, fromS, toS);
-    
-    if (!getOutEdges(fromS))
-        initOutEdges(fromS);
-    appendOutEdge(fromS, e);
-
-    if (!getInEdges(toS))
-        initInEdges(toS);
-    appendInEdge(toS, e);
-
-}
-
-
 NFA CreateNFA (int n, int e)
 {
     assert(n>0);
@@ -101,7 +55,7 @@ NFA CreateSingleNFA (wchar_t c)
     clearBits(e);
     addCharacter (e, c);
     
-    linkTwoStatusInNFA(nfa,0,1,0);
+    link_Two_Status_In_Automaton(nfa,0,1,0);
 
     adjustStatusID(nfa);
     ensureFinalStatus (nfa->end);
@@ -133,27 +87,71 @@ NFA CreateNFA_without_edge()
     return nfa ;
 }
 
-Status getStartStatus (NFA nfa)
+Array_T 
+getCharSet(NFA nfa)
 {
-    assert(nfa);
-    assert(nfa->start);
-    return nfa->start;
-}
-Status getEndStatus (NFA nfa)
-{
-    assert(nfa);
-    assert(nfa->end);
-    return nfa->end;
+    int     i;
+    ULL128  v;
+    ULL64   a = 1ULL;
+    Edge    e;
+    wchar_t c;
+
+    Array_T charSet;
+    charSet = Array_new(0,sizeof(wchar_t));
+
+    setZero(&v);
+
+    for (i=0; i<Array_length(nfa->edgeArray); i++)
+    {
+        e = Array_get(nfa->edgeArray, i);
+        if (!isEpsilon(e))
+        {
+            v = Or(getMatchBitVector(e), v);
+        }
+    }
+    for (i=0; i<64; i++)
+    {
+        c = (wchar_t)i;
+        if ((a & v.L64) != 0)
+            Array_append (charSet, &c);
+        a <<= 1;
+    }
+    a = 1ULL;
+    for (i=0; i<64; i++)
+    {
+        c = (wchar_t)(i+64);
+        if ((a & v.H64) != 0)
+            Array_append (charSet, &c);
+        a <<= 1;
+    }
+    return charSet;
 }
 
-Edge getEdge (NFA nfa, int i)
+int reachStatus(NFA nfa, int status_index, wchar_t c)
 {
+    int i, e_index;
     assert(nfa);
-    assert(nfa->edgeArray);
-    assert(i<Array_length(nfa->edgeArray) && i>=0);
-
-    return Array_get (nfa->edgeArray, i);
+    assert(status_index>=0 && status_index<Array_length(nfa->statusArray));
     
+    Status  currStatus;
+    Array_T outEdges;
+    Edge    e;
+
+    currStatus = Array_get(nfa->statusArray, status_index);
+    outEdges = getOutEdges(currStatus);
+    if (!outEdges)
+        return -1;
+
+    for (i=0; i<Array_length(outEdges); i++)
+    {
+        e_index = *(int*)Array_get(outEdges, i);
+        e = Array_get(nfa->edgeArray, e_index);
+        if (crossEdge(e, c))
+        {
+            return getStatusID(gettoStatus(e));
+        }
+    }
+    return -1;
 }
 
 
@@ -229,7 +227,7 @@ static void adjustStatusEdges (NFA copyNFA, NFA nfa, int s_offset, int e_offset)
             wprintf(L"error!!!\n");
         }
 
-        linkTwoStatusInNFA (copyNFA, id+s_offset, id2+s_offset, i+e_offset);
+        link_Two_Status_In_Automaton (copyNFA, id+s_offset, id2+s_offset, i+e_offset);
         //linkTwoStatus_by_AnEdge (s1, s2, e);
     }
 }
@@ -271,7 +269,7 @@ NFA Link (NFA frontNFA, NFA toNFA )
     // 提取对应于frontNFA状态的最后一个状态
     s1 = Array_get (combined_NFA->statusArray, n1-1);
     s2 = Array_get (combined_NFA->statusArray, n1);
-    linkTwoStatusInNFA (combined_NFA, n1-1, n1, Array_length(frontNFA->edgeArray));
+    link_Two_Status_In_Automaton (combined_NFA, n1-1, n1, Array_length(frontNFA->edgeArray));
     // linkTwoStatus_by_AnEdge (s1, s2, bridge);
      
 
@@ -280,8 +278,8 @@ NFA Link (NFA frontNFA, NFA toNFA )
     n = Array_length (frontNFA->edgeArray) + 1;
     adjustStatusEdges (combined_NFA, toNFA, n1, n);
 
-    freeNFA(frontNFA);
-    freeNFA(toNFA);
+    free_Automaton(frontNFA);
+    free_Automaton(toNFA);
 
     return combined_NFA ;
 }
@@ -349,27 +347,27 @@ NFA Union (NFA nfa1, NFA nfa2 )
     /* 提取0号边 */
     e = Array_get (combined_NFA->edgeArray, 0);
     setEpsilon (e);
-    linkTwoStatusInNFA (combined_NFA, 0, 1, 0);
+    link_Two_Status_In_Automaton (combined_NFA, 0, 1, 0);
     
     adjustStatusEdges (combined_NFA, nfa1, 1, 2);
      
     e = Array_get (combined_NFA->edgeArray, 1);
     setEpsilon (e);
-    linkTwoStatusInNFA (combined_NFA, 0, n1+1, 1);
+    link_Two_Status_In_Automaton (combined_NFA, 0, n1+1, 1);
 
     adjustStatusEdges (combined_NFA, nfa2, n1+1, e1+2);
 
     setEpsilon (Array_get (combined_NFA->edgeArray, e1+e2+2));
-    linkTwoStatusInNFA (combined_NFA, n1, n1+n2+1, e1+e2+2);
+    link_Two_Status_In_Automaton (combined_NFA, n1, n1+n2+1, e1+e2+2);
 
     setEpsilon (Array_get (combined_NFA->edgeArray, e1+e2+3));
-    linkTwoStatusInNFA (combined_NFA, n1+n2, n1+n2+1, e1+e2+3);
+    link_Two_Status_In_Automaton (combined_NFA, n1+n2, n1+n2+1, e1+e2+3);
 
     adjustStatusID (combined_NFA);
     ensureFinalStatus (combined_NFA->end);
 
-    freeNFA(nfa1);
-    freeNFA(nfa2);
+    free_Automaton(nfa1);
+    free_Automaton(nfa2);
 
     return combined_NFA ;
 }
@@ -424,26 +422,26 @@ NFA Closure(NFA nfa)
 
     /* 提取0号边 */
     setEpsilon (Array_get (newnfa->edgeArray, 0));
-    linkTwoStatusInNFA (newnfa, 0, 1, 0);
+    link_Two_Status_In_Automaton (newnfa, 0, 1, 0);
 
     /* 提取1号边 */
     setEpsilon (Array_get (newnfa->edgeArray, 1));
-    linkTwoStatusInNFA (newnfa, 0, n+1, 1);
+    link_Two_Status_In_Automaton (newnfa, 0, n+1, 1);
 
     /* 在newnfa中构造与nfa对应一样的图结构 */
     adjustStatusEdges (newnfa, nfa, 1, 2);
 
     /* 提取e+2号边 */
     setEpsilon (Array_get (newnfa->edgeArray, e+2));
-    linkTwoStatusInNFA (newnfa, n, 1, e+2);
+    link_Two_Status_In_Automaton (newnfa, n, 1, e+2);
 
     /* 提取e+3号边 */
     setEpsilon (Array_get (newnfa->edgeArray, e+3));
-    linkTwoStatusInNFA (newnfa, n, n+1, e+3);
+    link_Two_Status_In_Automaton (newnfa, n, n+1, e+3);
     
     adjustStatusID (newnfa); 
 
-    freeNFA(nfa);
+    free_Automaton(nfa);
     
     return newnfa;
 }
@@ -483,34 +481,62 @@ NFA Option (NFA nfa)
 
     /* 提取0号边 */
     setEpsilon (Array_get (newnfa->edgeArray, 0));
-    linkTwoStatusInNFA (newnfa, 0, 1, 0);
+    link_Two_Status_In_Automaton (newnfa, 0, 1, 0);
 
     /* 提取1号边 */
     setEpsilon (Array_get (newnfa->edgeArray, 1));
-    linkTwoStatusInNFA (newnfa, 0, n+1, 1);
+    link_Two_Status_In_Automaton (newnfa, 0, n+1, 1);
 
     /* 在newnfa中构造与nfa对应一样的图结构 */
     adjustStatusEdges (newnfa, nfa, 1, 2);
 
     /* 提取e+2号边 */
     setEpsilon (Array_get (newnfa->edgeArray, e+2));
-    linkTwoStatusInNFA (newnfa, n, n+1, e+2);
+    link_Two_Status_In_Automaton (newnfa, n, n+1, e+2);
 
     adjustStatusID (newnfa); 
 
-    freeNFA(nfa);
+    free_Automaton(nfa);
     
     return newnfa;
 }
 
-NFA Repeat_atleast_one( NFA nfa )
+NFA Repeat_atleast_one (NFA nfa)
 {
-    NFA nfa1, nfa2, newnfa ;
+    NFA     newnfa;
 
-    nfa1 = CopyNFA( nfa ) ;
-    nfa2 = Closure( nfa ) ;
+    int n, e;
 
-    newnfa = Link( nfa1, nfa2 ) ;
+    newnfa = malloc (sizeof (struct Automaton));
+    assert (newnfa);
+
+    /* 构造边数组 */
+    e = Array_length (nfa->edgeArray);
+    newnfa->edgeArray = allocEdgeArray (e+3);
+  
+    // 得到nfa状态个数
+    n = Array_length (nfa->statusArray);
+    newnfa->statusArray = allocStatusArray (n+2);
+
+    /* 提取0号边 */
+    setEpsilon (Array_get (newnfa->edgeArray, 0));
+    link_Two_Status_In_Automaton (newnfa, 0, 1, 0);
+
+    /* 在newnfa中构造与nfa对应一样的图结构 */
+    adjustStatusEdges (newnfa, nfa, 1, 1);
+
+    /* 提取e+1号边 */
+    setEpsilon (Array_get (newnfa->edgeArray, e+1));
+    link_Two_Status_In_Automaton (newnfa, n, 1, e+1);
+
+    /* 提取e+2号边 */
+    setEpsilon (Array_get (newnfa->edgeArray, e+2));
+    link_Two_Status_In_Automaton (newnfa, n, n+1, e+2);
+    
+    adjustStatusID (newnfa); 
+
+    free_Automaton(nfa);
+    
     return newnfa;
 }
 
@@ -625,48 +651,3 @@ Status_Transfer_Under_Condition(const Status status, Condition cond)
     */
 }
 
-void freeNFA (NFA nfa)
-{
-    Edge    e;
-    int i;
-    assert(nfa);
-    
-    for (i=0; i<Array_length(nfa->edgeArray); i++)
-    {
-        e = Array_get(nfa->edgeArray,i);
-        unreferenceStatus (e);
-        clearBits(e);
-    }
-
-    for (i=0; i<Array_length(nfa->statusArray); i++)
-        freeEdgesInStatus (Array_get(nfa->statusArray, i));
-
-    if (nfa->statusArray)
-        Array_free (&nfa->statusArray);
-    if (nfa->edgeArray)
-        Array_free (&nfa->edgeArray);
-    free (nfa);
-    nfa=NULL;
-}
-
-void printNFA (NFA nfa)
-{
-    int i;
-    Edge e;
-    Status s1, s2;
-    for (i=0; i<Array_length(nfa->edgeArray); i++)
-    {
-        e = Array_get (nfa->edgeArray, i);
-        s1 = getfromStatus (e);
-        s2 = gettoStatus (e);
-        wprintf(L"(%d, %d, ", getStatusID(s1), getStatusID(s2));
-        printEdge(e);
-        wprintf(L")");
-        if (isFinalStatus(s2))
-        {
-            wprintf(L"   (F)");
-        }
-        wprintf(L"\n");
-    }
-    wprintf(L"\n");
-}

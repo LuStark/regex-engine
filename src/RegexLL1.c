@@ -7,7 +7,9 @@
 #include "Edge.h"
 #include "Status.h"
 #include <locale.h>
-
+#include "StatusSet.h"
+#include "DFA.h"
+#include "automaton.h"
 
 #define MAX 150
 
@@ -199,7 +201,7 @@ NFA LL1_character_range()
 
     match (']');
 
-    linkTwoStatusInNFA (p, 0, 1, 0);
+    link_Two_Status_In_Automaton (p, 0, 1, 0);
 
     return p;
 }
@@ -318,6 +320,7 @@ NFA LL1_regex()
 
     nfa = LL1_re_union_level();
 
+    /*
     if (!LL1_finished_symbol)
     {
         wprintf (L"未可预知的符号: ");
@@ -325,14 +328,16 @@ NFA LL1_regex()
             putwchar (c);
         exit(1);
     }
+    */
 
     return nfa;
 }
 
 int main ()
 {
-    int i;
-    NFA nfa;
+    int     i;
+    NFA     nfa;
+    DFA     dfa;
     setlocale(LC_CTYPE, "");
     
     init_FirstSet();
@@ -341,7 +346,10 @@ int main ()
 
     nfa = LL1_regex();
 
-    printNFA (nfa);
+    //print_Automaton(nfa);
+    dfa = Subset_Construct(nfa);
+    
+    print_Automaton (dfa);
 
     return 0;
 }

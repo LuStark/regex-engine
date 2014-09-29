@@ -14,7 +14,7 @@ re_top_level -> ( regex ) | non-special | escape_character | character_range
 
     First(regex) = First(re_union_level) = First(re_link_level)
     = First(re_closure_level) = First(re_top_level) = 
-    { 不包括 $ + * ? | }
+    { 不包括 $ + * ? | ) }
 
 
 

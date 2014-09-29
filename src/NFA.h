@@ -14,11 +14,7 @@ extern NFA  CreateNFA(int n, int e);
 /* 根据匹配单个的字符创建只有一条边两个状态的NFA */
 extern NFA  CreateSingleNFA (wchar_t c);
 
-extern Status   getStartStatus (NFA);
-extern Status   getEndStatus (NFA);
-extern Edge     getEdge (NFA nfa, int i);
-
-extern void linkTwoStatusInNFA (NFA nfa, int from, int to, int e);
+extern int reachStatus (NFA nfa, int currindex, wchar_t c);
 
 /* 创建无边的NFA。 */
 extern NFA  CreateNFA_without_edge ();
@@ -37,8 +33,6 @@ extern NFA  Repeat_atleast_one (NFA);
 
 /* 可选的正则表达式 */
 extern NFA  Option (NFA);
-
-extern void printNFA (NFA);
 
 
 /* 用一条边(edge)连结两个状态(status) */
@@ -64,6 +58,9 @@ void isNullPointer (void *);
 bool
 itemInSet( int id, int Set[], int size );
 
+Array_T
+getCharSet (NFA);
+
 void 
 generateCondSet (NFA, Edge*, int* );
 
@@ -72,6 +69,7 @@ extern int
 Status_Transfer_Under_Condition(const Status status, Edge cond);
 
 extern void freeNFA (NFA);
+
 
 #undef S
 #endif

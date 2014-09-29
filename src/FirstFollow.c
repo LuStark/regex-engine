@@ -48,7 +48,7 @@ void init_FirstSet()
     }
     First_re_top_level['$'] = First_re_top_level['+'] = 
             First_re_top_level['*'] = First_re_top_level['?'] = 
-                First_re_top_level['|'] = 0;
+                First_re_top_level['|'] = First_re_top_level[')'] = 0;
     for (i=0; i<128; i++)
     {
         First_regex[i] = First_re_union_level[i] = First_re_link_level[i]
