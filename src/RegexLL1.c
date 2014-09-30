@@ -347,6 +347,7 @@ int main ()
     nfa = LL1_regex();
 
     //print_Automaton(nfa);
+    //print_Automaton(nfa);
     dfa = Subset_Construct(nfa);
     
     print_Automaton (dfa);

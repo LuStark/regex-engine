@@ -35,7 +35,6 @@ void ArrayRep_init (T array, int length, int size, void *ary)
 
 }
 
-
 void Array_free(T *array)
 {
     assert(array && *array);
