@@ -10,6 +10,7 @@
 #include "StatusSet.h"
 #include "DFA.h"
 #include "automaton.h"
+#include "Regex.h"
 
 #define MAX 150
 
@@ -338,6 +339,8 @@ int main ()
     int     i;
     NFA     nfa;
     DFA     dfa;
+    Regex   re;
+
     setlocale(LC_CTYPE, "");
     
     init_FirstSet();
@@ -348,9 +351,16 @@ int main ()
 
     //print_Automaton(nfa);
     //print_Automaton(nfa);
-    dfa = Subset_Construct(nfa);
+    dfa =   Subset_Construct(nfa);
+
+    re  =   init_Regex(dfa);
+
+    if (Recognition(re, L"a"))
+    {
+        wprintf(L"识别成功!\n");
+    }
     
-    print_Automaton (dfa);
+    //print_Automaton (dfa);
 
     return 0;
 }

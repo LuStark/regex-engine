@@ -15,12 +15,15 @@ typedef struct Regex {
     int         numOfStatus;
 } Regex;
 
+
+extern Regex   init_Regex(DFA dfa);
+
 /* DFA自动机可以生成一个二维表, 也称为状态转换表 */
 extern DFATable
 makeUpDFATable (DFA dfa);
 
 /* 识别函数可以针对一个串进行识别，返回true/false */
 extern bool
-Recognition (Regex  re, xchar_t *normal);
+Recognition (Regex  re, wchar_t *normal);
 
 #endif

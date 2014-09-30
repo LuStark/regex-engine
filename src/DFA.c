@@ -35,7 +35,7 @@ static bool exist_connection(DFA dfa, int from, int to, wchar_t c)
     return too==to;
 }
 
-extern DFA Subset_Construct (NFA nfa)
+extern DFA  Subset_Construct (NFA nfa)
 {
     StatusSet_table T;
     StatusSet   currSet, toSet;

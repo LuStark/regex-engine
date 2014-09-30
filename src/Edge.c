@@ -50,6 +50,7 @@ struct E
 
     bool        hasEpsilon;
     Array_T     content;
+    bool        anymatch;
 };
 
 ULL128   getMatchBitVector(E e)
