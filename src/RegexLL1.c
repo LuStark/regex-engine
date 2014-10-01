@@ -334,7 +334,7 @@ NFA LL1_regex()
     return nfa;
 }
 
-int main ()
+int main1 ()
 {
     int     i;
     NFA     nfa;

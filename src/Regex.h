@@ -12,7 +12,7 @@ typedef struct Regex {
     DFATable    T;
     DFA         dfa;
     char        name;
-    int         numOfStatus;
+//    int         numOfStatus;
 } Regex;
 
 
@@ -25,5 +25,8 @@ makeUpDFATable (DFA dfa);
 /* 识别函数可以针对一个串进行识别，返回true/false */
 extern bool
 Recognition (Regex  re, wchar_t *normal);
+
+extern bool
+re_match (wchar_t *re, wchar_t *str);
 
 #endif

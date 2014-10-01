@@ -2,8 +2,10 @@
 #include "NFA.h"
 #include "typedef.h"
 #include "automaton.h"
+#include "RegexLL1.h"
 #include <assert.h>
 #include <stdlib.h>
+#include "FirstFollow.h"
 
 /* 为DFA创建一个状态转换表 T[i][j], 状态值i在字符j下转换到的状态 */
 
@@ -74,4 +76,32 @@ Recognition (Regex regex, wchar_t *str )
         return true;
 
     return false;
+}
+
+bool
+re_match(wchar_t *pattern, wchar_t *str)
+{
+    Regex   re;
+ 
+    NFA     nfa;
+    DFA     dfa;
+
+    wchar_t _pattern[100];
+
+    wcscpy(_pattern, pattern);
+    _pattern[wcslen(_pattern)] = '$';
+    _pattern[wcslen(_pattern)+1] = '\0';
+
+    init_FirstSet();
+    init_FollowSet();
+
+    wcscpy(regex, _pattern);
+    currentIndex = 0;
+
+    nfa = LL1_regex();
+    dfa = Subset_Construct(nfa);
+    free_Automaton(nfa);
+
+    re  = init_Regex(dfa);
+
 }
