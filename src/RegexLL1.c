@@ -32,7 +32,7 @@ void getRegex ()
     regex[i] = '\0';
 }
 
-void match (wchar_t obj)
+static void match (wchar_t obj)
 {
     if (LL1_finished_symbol==1)
         return;
@@ -53,7 +53,7 @@ void match (wchar_t obj)
     }
 }
 
-int error (wchar_t funcName[], wchar_t c)
+static int error (wchar_t funcName[], wchar_t c)
 {
     wprintf (L"%ls中出现无法匹配的字符%c\n", funcName, c);
     exit (1);
@@ -340,11 +340,13 @@ int main ()
     NFA     nfa;
     DFA     dfa;
     Regex   re;
+    wchar_t str[100];
 
     setlocale(LC_CTYPE, "");
     
     init_FirstSet();
     init_FollowSet();
+    wprintf(L"输入正则表达式: ");
     getRegex();
 
     nfa = LL1_regex();
@@ -355,10 +357,10 @@ int main ()
 
     re  =   init_Regex(dfa);
 
-    if (Recognition(re, L"a"))
-    {
+    wprintf(L"输入待识别串: ");
+    while (wscanf(L"%ls", str) != EOF)
+      if (Recognition(re, str))
         wprintf(L"识别成功!\n");
-    }
     
     //print_Automaton (dfa);
 
