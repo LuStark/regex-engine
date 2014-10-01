@@ -26,7 +26,10 @@ makeUpDFATable (DFA dfa);
 extern bool
 Recognition (Regex  re, wchar_t *normal);
 
+extern Regex 
+re_compile(wchar_t *pattern);
+
 extern bool
-re_match (wchar_t *re, wchar_t *str);
+re_match (Regex re, wchar_t *str);
 
 #endif

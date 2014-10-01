@@ -59,7 +59,7 @@ makeUpDFATable (DFA dfa)
 
 bool
 Recognition (Regex regex, wchar_t *str )
-{    
+{
     int i;
     int length = wcslen(str);
     wchar_t     c;
@@ -78,8 +78,8 @@ Recognition (Regex regex, wchar_t *str )
     return false;
 }
 
-bool
-re_match(wchar_t *pattern, wchar_t *str)
+Regex
+re_compile(wchar_t *pattern)
 {
     Regex   re;
  
@@ -104,4 +104,16 @@ re_match(wchar_t *pattern, wchar_t *str)
 
     re  = init_Regex(dfa);
 
+    return re;
 }
+
+bool
+re_match(Regex re, wchar_t *str)
+{
+    if (Recognition(re, str))
+        return true;
+    else
+        return false;
+}
+
+

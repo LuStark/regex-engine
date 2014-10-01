@@ -119,20 +119,20 @@ Array_T  getEdgeArray    (Automaton *AM)
     return AM->edgeArray;
 }
 
-Status  getStartStatus (Automaton *AM)
+Status   getStartStatus (Automaton *AM)
 {
     assert(AM);
     assert(AM->start);
     return AM->start;
 }
 
-Status  getEndStatus (Automaton *AM)
+Status   getEndStatus (Automaton *AM)
 {
     assert(AM);
     assert(AM->end);
     return AM->end;
 }
-Edge    getEdge (Automaton *AM, int i)
+Edge     getEdge (Automaton *AM, int i)
 {
     assert(AM);
     assert(AM->edgeArray);
@@ -141,7 +141,7 @@ Edge    getEdge (Automaton *AM, int i)
     return Array_get (AM->edgeArray, i);
     
 }
-Status  getStatus (Automaton *AM, int i)
+Status   getStatus (Automaton *AM, int i)
 {
     assert(AM);
     assert(AM->statusArray);
@@ -150,7 +150,7 @@ Status  getStatus (Automaton *AM, int i)
     return Array_get (AM->statusArray, i);
 }
 
-Edge    getLink (Automaton *AM, int from, int to)
+Edge     getLink (Automaton *AM, int from, int to)
 {
     int     i, e_index;
     Status  s;

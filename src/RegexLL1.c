@@ -38,17 +38,17 @@ static void match (wchar_t obj)
         return;
     if (regex[currentIndex]==obj)
     {
-        wprintf (L"匹配 %lc\n", obj);
+        //wprintf (L"匹配 %lc\n", obj);
         currentIndex++;
         if (regex[currentIndex]=='$')
         {
-            wprintf (L"匹配完成.\n");
+            //wprintf (L"匹配完成.\n");
             LL1_finished_symbol = 1;
         }
     }
     else
     {
-        wprintf (L"%lc Don't match %lc\n", regex[currentIndex], obj);
+        //wprintf (L"%lc Don't match %lc\n", regex[currentIndex], obj);
         exit(1);
     }
 }
@@ -334,15 +334,23 @@ NFA LL1_regex()
     return nfa;
 }
 
+void cpy(char *pattern)
+{
+    printf("%s\n", pattern);
+    exit(0);
+}
+
+
 int main1 ()
 {
     int     i;
     NFA     nfa;
     DFA     dfa;
     Regex   re;
-    wchar_t str[100];
+    wchar_t str[100], pattern[100];
 
     setlocale(LC_CTYPE, "");
+
     
     init_FirstSet();
     init_FollowSet();
@@ -353,15 +361,18 @@ int main1 ()
 
     //print_Automaton(nfa);
     //print_Automaton(nfa);
-    dfa =   Subset_Construct(nfa);
+    dfa = Subset_Construct(nfa);
+    print_Automaton(dfa);
 
-    re  =   init_Regex(dfa);
+    re  = init_Regex(dfa);
 
     wprintf(L"输入待识别串: ");
     while (wscanf(L"%ls", str) != EOF)
       if (Recognition(re, str))
         wprintf(L"识别成功!\n");
-    
+    //if (Recognition(re, str))
+    //    wprintf(L"识别成功!\n");
+
     //print_Automaton (dfa);
 
     return 0;

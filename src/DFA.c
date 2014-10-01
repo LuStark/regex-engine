@@ -64,7 +64,6 @@ extern DFA  Subset_Construct (NFA nfa)
     get_two_StatusSet_Table (nfa, &T, reverse);
     dfa = CreateDFA (T.size, 0);
 
-    wprintf(L"\n");
     while (front != tail)
     {
         from = Q[front++];
@@ -97,7 +96,6 @@ extern DFA  Subset_Construct (NFA nfa)
             }
         }
     }
-    wprintf(L"\n");
     return dfa;
 }
 
