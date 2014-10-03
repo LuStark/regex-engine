@@ -1,4 +1,6 @@
-regex -> re_union_level 
+
+
+regex -> re_union_level    
 
 re_union_level -> re_link_level { | re_link_level }
 
@@ -6,8 +8,9 @@ re_link_level -> re_closure_level { re_closure_level }
 
 re_closure_level -> re_top_level { closure_op }1    #匹配一次
 
-re_top_level -> ( regex ) | non-special | escape_character | character_range
+re_top_level -> ( regex ) | non-special | escape_character | character_range | ( ? D regex)
 
+D -> = | != | <= | :
 
 
 #关于First集合，上述文法规则有以下结论:

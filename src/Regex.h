@@ -7,16 +7,26 @@
 #include "DFA.h"
 
 typedef int     **DFATable;
+typedef struct Regex    Regex, *regexNode;
 
-typedef struct Regex {
+
+struct Regex {
     DFATable    T;
+    NFA         nfa_buffer;
     DFA         dfa;
     char        name;
-//    int         numOfStatus;
-} Regex;
+    regexNode   left;
+    regexNode   right;
+    bool        yucha;
+    char        regex_op;
+};
 
 
-extern Regex   init_Regex(DFA dfa);
+extern regexNode
+alloc_regexNode();
+
+extern void
+init_Regex(regexNode re, DFA dfa);
 
 /* DFA自动机可以生成一个二维表, 也称为状态转换表 */
 extern DFATable
@@ -26,7 +36,7 @@ makeUpDFATable (DFA dfa);
 extern bool
 Recognition (Regex  re, wchar_t *normal);
 
-extern Regex 
+extern regexNode 
 re_compile(wchar_t *pattern);
 
 extern bool

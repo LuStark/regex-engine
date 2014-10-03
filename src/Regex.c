@@ -9,11 +9,19 @@
 
 /* 为DFA创建一个状态转换表 T[i][j], 状态值i在字符j下转换到的状态 */
 
-Regex   init_Regex(DFA  dfa)
+void
+init_Regex(regexNode re, DFA  dfa)
 {
-    Regex   re;
-    re.dfa  = dfa;  
-    re.T    = makeUpDFATable(dfa);
+    re->dfa  = dfa;
+    re->T    = makeUpDFATable(dfa);
+}
+
+regexNode   alloc_regexNode()
+{
+    regexNode   re;
+    re = malloc(sizeof(*re));
+    assert(re);
+    
     return re;
 }
 
@@ -58,7 +66,7 @@ makeUpDFATable (DFA dfa)
 }
 
 bool
-Recognition (Regex regex, wchar_t *str )
+Recognition (Regex regex, wchar_t *str)
 {
     int i;
     int length = wcslen(str);
@@ -78,13 +86,13 @@ Recognition (Regex regex, wchar_t *str )
     return false;
 }
 
-Regex
+regexNode
 re_compile(wchar_t *pattern)
 {
-    Regex   re;
+    regexNode   re;
  
-    NFA     nfa;
-    DFA     dfa;
+    NFA         nfa;
+    DFA         dfa;
 
     wchar_t _pattern[100];
 
@@ -98,11 +106,12 @@ re_compile(wchar_t *pattern)
     wcscpy(regex, _pattern);
     currentIndex = 0;
 
-    nfa = LL1_regex();
-    dfa = Subset_Construct(nfa);
-    free_Automaton(nfa);
+    re  = LL1_regex();
+    re->dfa = Subset_Construct(re->nfa_buffer);
+    free_Automaton(re->nfa_buffer);
+    re->nfa_buffer = NULL;
 
-    re  = init_Regex(dfa);
+    init_Regex(re, re->dfa);
 
     return re;
 }

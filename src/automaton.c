@@ -167,3 +167,8 @@ Edge     getLink (Automaton *AM, int from, int to)
     }
     return NULL;
 }
+
+bool     isYuCha (Automaton *AM)
+{
+    return AM->yucha;
+}

@@ -11,6 +11,7 @@
 #include "DFA.h"
 #include "automaton.h"
 #include "Regex.h"
+#include "RegexLL1.h"
 
 #define MAX 150
 
@@ -59,28 +60,32 @@ static int error (wchar_t funcName[], wchar_t c)
     exit (1);
 }
 
-NFA  LL1_non_special_wchar_t()
+regexNode  LL1_non_special_wchar_t()
 {
     wchar_t c;
-    NFA  p;
+    regexNode   r;
     
+    r = alloc_regexNode();
+
     c = regex[currentIndex];
     
     if (First_non_special[c] == 1)
     {
         match (c);
-        p = CreateSingleNFA (c);
+        r->nfa_buffer = CreateSingleNFA (c);
     }
     else
         error (L"LL1_noncharacter()", c);
 
-    return p;
+    return r;
 }
 
-NFA  LL1_escapecharacter()
+regexNode   LL1_escapecharacter()
 {
-    wchar_t    c;
-    NFA  p;
+    wchar_t     c;
+    regexNode   r;
+
+    r = alloc_regexNode();
 
     c = regex[currentIndex];
     if (c != '\\')
@@ -88,29 +93,29 @@ NFA  LL1_escapecharacter()
 
     match ('\\');
     c = regex[currentIndex];
-    p = CreateSingleNFA (c);
+    r->nfa_buffer = CreateSingleNFA (c);
     match (c);
 
-    return p;
+    return r;
 }
 
-NFA  LL1_character()
+regexNode   LL1_character()
 {
-    wchar_t    c;
-    NFA  p; 
+    wchar_t     c;
+    regexNode   r;
    
     c = regex[currentIndex];
     if (First_character[c]==1)
     {
         if (c=='\\')
-            p = LL1_escapecharacter();
+            r = LL1_escapecharacter();
         else
-            p = LL1_non_special_wchar_t();
+            r = LL1_non_special_wchar_t();
     }
     else
         error (L"LL1_character()", c);
 
-    return p;
+    return r;
 }
 
 int LL1_choose_or_not()
@@ -165,7 +170,7 @@ Range LL1_range()
     return r;
 }
 
-NFA LL1_character_range()
+regexNode   LL1_character_range()
 {
     wchar_t c;
     Range r, bufferRange[280];
@@ -174,6 +179,9 @@ NFA LL1_character_range()
     Edge   e;
     NFA  p;
     int     i;
+    regexNode   re;
+
+    re = alloc_regexNode();
 
     // 创建两个顶点一条边的NFA
     p = CreateNFA (2,1);
@@ -204,46 +212,78 @@ NFA LL1_character_range()
 
     link_Two_Status_In_Automaton (p, 0, 1, 0);
 
-    return p;
+    re->nfa_buffer = p; 
+
+    return re;
 }
 
-//declaration
-NFA LL1_regex();
-
-NFA LL1_re_top_level()
+regexNode   LL1_re_boundary()
 {
-    NFA p;
+    wchar_t     c;
+    regexNode   re;
+
+    match('?');
+    c = regex[currentIndex];
+    if (c=='=')
+    {
+        match('=');
+        re = LL1_regex();
+    }
+    else if (c=='<')
+    {
+        match('<');
+        match('=');
+        re = LL1_regex();
+    }
+    else if (c=='!')
+    {
+        match('!');
+        match('=');
+        re = LL1_regex();
+    }
+    re->yucha = true;
+    
+    return re;
+}
+
+regexNode   LL1_re_top_level()
+{
+    regexNode r;
     wchar_t c;
 
     c = regex[currentIndex];
     
     if (First_non_special[c] == 1)
     {
-        p = LL1_non_special_wchar_t();
+        r = LL1_non_special_wchar_t();
     }
     else if (c == '(')
     {
         match ('(');
-        p = LL1_regex();
+        c = regex[currentIndex];
+        if (c=='?')
+            r = LL1_re_boundary();
+        else
+            r = LL1_regex();
         match (')');
     }
     else if (c == '\\')
     {
-        p = LL1_escapecharacter();
+        r = LL1_escapecharacter();
     }
     else if (c == '[')
     {
-        p = LL1_character_range();
+        r = LL1_character_range();
     }
     else
     {
         error (L"re_top_level()", c);
     }
 
-    return p;
+    return r;
 }
 
-wchar_t LL1_closure_op()
+wchar_t     LL1_closure_op()
 {
     wchar_t c;
     c = regex[currentIndex];
@@ -252,86 +292,116 @@ wchar_t LL1_closure_op()
     return c;
 }
 
-NFA LL1_re_closure_level()
+regexNode   LL1_re_closure_level()
 {
-    wchar_t c, op;
-    NFA nfa, nfa2;
+    wchar_t     c, op;
+    regexNode   r;
+    NFA         nfa, nfa2;
     
-    nfa = LL1_re_top_level();
-    c = regex[currentIndex];
+    r = LL1_re_top_level();
+    c   = regex[currentIndex];
     if (First_closure_op[c] == 1)
     {
         op = LL1_closure_op();
         if (op=='*')
-            nfa2 = Closure (nfa);
+            nfa2 = Closure (r->nfa_buffer);
         else if (op=='+')
-            nfa2 = Repeat_atleast_one(nfa);
+            nfa2 = Repeat_atleast_one(r->nfa_buffer);
         else if (op=='?')
-            nfa2 = Option (nfa);
+            nfa2 = Option (r->nfa_buffer);
         else
             wprintf(L"无法识别的闭包运算符\n");
-        nfa = nfa2;
+        r->nfa_buffer = nfa2;
     }
 
-    return nfa;
+    return r;
 }
 
-NFA LL1_re_link_level()
+regexNode   LL1_re_link_level()
 {
-    wchar_t c;
-    NFA nfa1, nfa2, nfa;
+    wchar_t     c;
+    NFA         nfa1, nfa2, nfa;
+    regexNode   re, re2, pre_re, post_re, op_re;
+    bool        left_bound, right_bound;
 
-    nfa1 = LL1_re_closure_level();
-    
+    left_bound = right_bound = false;
+    re = LL1_re_closure_level();
+ 
     c = regex[currentIndex];
     while (First_re_closure_level[c] == 1)
     {
-        nfa2 = LL1_re_closure_level();
-        //printNFA(nfa2);
+        re2 = LL1_re_closure_level();
+
+        if (re->yucha)
+        {
+            pre_re = re;
+            re = re2;
+            left_bound = true;
+            c = regex[currentIndex];
+            continue;
+        }
+        if (re2->yucha)
+        {
+            post_re = re2;
+            right_bound = true;
+            break;
+        }
+
+        nfa = Link(re->nfa_buffer, re2->nfa_buffer);
+        re -> nfa_buffer = nfa;
+
         c = regex[currentIndex];
-        nfa = Link(nfa1, nfa2);
-        nfa1 = nfa;
     }
 
-    return nfa1;
+    if (right_bound)
+    {
+        op_re = alloc_regexNode();
+        op_re->regex_op = '&';
+        op_re->left     = re;
+        op_re->right    = post_re;
+        re = op_re;
+    }
+
+    if (left_bound)
+    {
+        op_re = alloc_regexNode();
+        op_re->regex_op = '&';
+        op_re->left     = pre_re;
+        op_re->right    = re;
+        re = op_re;
+    }
+
+
+    return re;
 }
 
-NFA LL1_re_union_level()
+regexNode   LL1_re_union_level()
 {
-    wchar_t c;
-    NFA nfa1, nfa2, nfa;
+    wchar_t     c;
+    regexNode   re, re2;
 
-    nfa1 = LL1_re_link_level();
+
+    re = LL1_re_link_level();
     c = regex[currentIndex];
     while (c == '|')
     {
         match ('|');
-        nfa2 = LL1_re_link_level();
-        nfa = Union(nfa1, nfa2);
-        nfa1 = nfa;
+        re2 = LL1_re_link_level();
+        re->nfa_buffer = Union(re->nfa_buffer, re2->nfa_buffer);
         c = regex[currentIndex];
     }
-    return nfa1;
+ 
+    return re;
 }
 
-NFA LL1_regex()
+regexNode   LL1_regex()
 {
     wchar_t c;
-    NFA nfa;
+    regexNode   r;
 
-    nfa = LL1_re_union_level();
+    r = LL1_re_union_level();
 
-    /*
-    if (!LL1_finished_symbol)
-    {
-        wprintf (L"未可预知的符号: ");
-        while ((c=regex[currentIndex++]) != '$')
-            putwchar (c);
-        exit(1);
-    }
-    */
-
-    return nfa;
+    return r;
 }
 
 void cpy(char *pattern)
@@ -341,13 +411,13 @@ void cpy(char *pattern)
 }
 
 
-int main1 ()
+int main ()
 {
-    int     i;
-    NFA     nfa;
-    DFA     dfa;
-    Regex   re;
-    wchar_t str[100], pattern[100];
+    int         i;
+    NFA         nfa;
+    DFA         dfa;
+    regexNode   re;
+    wchar_t     str[100], pattern[100];
 
     setlocale(LC_CTYPE, "");
 
@@ -357,23 +427,17 @@ int main1 ()
     wprintf(L"输入正则表达式: ");
     getRegex();
 
-    nfa = LL1_regex();
+    re = LL1_regex();
 
-    //print_Automaton(nfa);
-    //print_Automaton(nfa);
-    dfa = Subset_Construct(nfa);
+    dfa = Subset_Construct(re->nfa_buffer);
     print_Automaton(dfa);
 
-    re  = init_Regex(dfa);
+    init_Regex(re, dfa);
 
     wprintf(L"输入待识别串: ");
     while (wscanf(L"%ls", str) != EOF)
-      if (Recognition(re, str))
-        wprintf(L"识别成功!\n");
-    //if (Recognition(re, str))
-    //    wprintf(L"识别成功!\n");
-
-    //print_Automaton (dfa);
+        if (Recognition(*re, str))
+            wprintf(L"识别成功!\n");
 
     return 0;
 }

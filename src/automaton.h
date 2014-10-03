@@ -12,6 +12,7 @@ typedef struct Automaton
     Status  start, end;
     Array_T statusArray;
     Array_T edgeArray;
+    bool    yucha;
 }Automaton;
 
 
@@ -28,6 +29,6 @@ extern  Edge    getEdge (Automaton*, int);
 extern  Status  getStatus (Automaton*, int);
 
 extern  Edge    getLink (Automaton*,int,int);
-
+extern  bool    isYuCha (Automaton*);
 
 #endif
