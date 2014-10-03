@@ -39,17 +39,17 @@ static void match (wchar_t obj)
         return;
     if (regex[currentIndex]==obj)
     {
-        //wprintf (L"匹配 %lc\n", obj);
+        wprintf (L"匹配 %lc\n", obj);
         currentIndex++;
         if (regex[currentIndex]=='$')
         {
-            //wprintf (L"匹配完成.\n");
+            wprintf (L"匹配完成.\n");
             LL1_finished_symbol = 1;
         }
     }
     else
     {
-        //wprintf (L"%lc Don't match %lc\n", regex[currentIndex], obj);
+        wprintf (L"%lc Don't match %lc\n", regex[currentIndex], obj);
         exit(1);
     }
 }
@@ -60,7 +60,7 @@ static int error (wchar_t funcName[], wchar_t c)
     exit (1);
 }
 
-regexNode  LL1_non_special_wchar_t()
+regexNode   LL1_non_special_wchar_t()
 {
     wchar_t c;
     regexNode   r;
@@ -241,7 +241,12 @@ regexNode   LL1_re_boundary()
         match('=');
         re = LL1_regex();
     }
+    construct_table(re);    
+
+    re->type = BOUND;
     re->yucha = true;
+
+
     
     return re;
 }
@@ -332,7 +337,7 @@ regexNode   LL1_re_link_level()
     {
         re2 = LL1_re_closure_level();
 
-        if (re->yucha)
+        if (re->type == BOUND)
         {
             pre_re = re;
             re = re2;
@@ -340,7 +345,7 @@ regexNode   LL1_re_link_level()
             c = regex[currentIndex];
             continue;
         }
-        if (re2->yucha)
+        if (re2->type == BOUND)
         {
             post_re = re2;
             right_bound = true;
@@ -353,8 +358,10 @@ regexNode   LL1_re_link_level()
         c = regex[currentIndex];
     }
 
+    construct_table(re);
     if (right_bound)
     {
+        construct_table(post_re);
         op_re = alloc_regexNode();
         op_re->regex_op = '&';
         op_re->left     = re;
@@ -364,6 +371,8 @@ regexNode   LL1_re_link_level()
 
     if (left_bound)
     {
+        construct_table(pre_re);
+
         op_re = alloc_regexNode();
         op_re->regex_op = '&';
         op_re->left     = pre_re;
@@ -371,15 +380,13 @@ regexNode   LL1_re_link_level()
         re = op_re;
     }
 
-
     return re;
 }
 
 regexNode   LL1_re_union_level()
 {
     wchar_t     c;
-    regexNode   re, re2;
-
+    regexNode   re, re2, op;
 
     re = LL1_re_link_level();
     c = regex[currentIndex];
@@ -387,7 +394,20 @@ regexNode   LL1_re_union_level()
     {
         match ('|');
         re2 = LL1_re_link_level();
-        re->nfa_buffer = Union(re->nfa_buffer, re2->nfa_buffer);
+
+        if (re->type==OP || re2->type==OP)
+        {
+
+            op = alloc_regexNode();
+            op->regex_op = '|';
+            op->left    = re;
+            op->right   = re2;
+            re = op;
+        }
+        else
+        {
+            re->nfa_buffer = Union(re->nfa_buffer, re2->nfa_buffer);
+        }
         c = regex[currentIndex];
     }
  
@@ -396,7 +416,7 @@ regexNode   LL1_re_union_level()
 
 regexNode   LL1_regex()
 {
-    wchar_t c;
+    wchar_t     c;
     regexNode   r;
 
     r = LL1_re_union_level();
@@ -421,7 +441,7 @@ int main ()
 
     setlocale(LC_CTYPE, "");
 
-    
+ 
     init_FirstSet();
     init_FollowSet();
     wprintf(L"输入正则表达式: ");
@@ -429,6 +449,20 @@ int main ()
 
     re = LL1_regex();
 
+    wchar_t *T = L"abcd";
+
+    int start, end;
+    start = 0;
+
+    matchContext(T, re);
+    /*
+    if (re_match2(re, T, &start, &end))
+    {
+        wprintf(L"识别成功!\n");
+    }
+    */
+    //print_Automaton(nfa);
+    /*
     dfa = Subset_Construct(re->nfa_buffer);
     print_Automaton(dfa);
 
@@ -438,6 +472,6 @@ int main ()
     while (wscanf(L"%ls", str) != EOF)
         if (Recognition(*re, str))
             wprintf(L"识别成功!\n");
-
+    */
     return 0;
 }

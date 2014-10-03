@@ -16,7 +16,15 @@ init_Regex(regexNode re, DFA  dfa)
     re->T    = makeUpDFATable(dfa);
 }
 
-regexNode   alloc_regexNode()
+void
+construct_table(regexNode re)
+{
+    re->dfa = Subset_Construct(re->nfa_buffer);
+    re->T   = makeUpDFATable(re->dfa);
+}
+
+regexNode
+alloc_regexNode()
 {
     regexNode   re;
     re = malloc(sizeof(*re));
@@ -86,6 +94,31 @@ Recognition (Regex regex, wchar_t *str)
     return false;
 }
 
+/* 一旦成功匹配regex，立即返回下标位置，若匹配失败，则返回-1 */
+int
+greedy_match(regexNode re, wchar_t *str, int currPos)
+{
+    int i;
+    int length = wcslen(str);
+    wchar_t     c;
+    wchar_t     *p;
+
+    p = str+currPos;
+    i = 0;
+    while (*p)
+    {
+        if (re->T[i][*p] == -1)
+          return -1;
+        else
+          i = re->T[i][*p];
+        if (isFinalStatus(Array_get(re->dfa->statusArray, i)))
+          return p-str-currPos+1;
+        p++;
+    }
+    return -1;
+}
+
+
 regexNode
 re_compile(wchar_t *pattern)
 {
@@ -125,4 +158,83 @@ re_match(Regex re, wchar_t *str)
         return false;
 }
 
+bool
+re_match2(regexNode re, wchar_t *str, int *start, int *end)
+{
+    char    op;
+    int     b1, b2;
+    int     s, e;
+    int     len;
 
+    s = *start;
+    e = *end;
+
+    if (!re)
+      return false;
+
+    if (!re->left && !re->right)
+    {
+        len = greedy_match(re, str, *start);
+        if (len==-1) return false;
+        /* 否则就说明匹配re成功 */
+        *end = *start + len;
+        return true;
+    }
+    
+    op = re->regex_op;
+    if (op == '|')
+    {
+        b1 = re_match2(re->left, str, start, end);
+        if (b1) return true;
+
+        b2 = re_match2(re->right, str, start, end);
+        if (b2) return true;
+    }
+    else if (op == '&')
+    {
+        /* 先匹配左边的正则表达式，再匹配右边的正则表达式 */
+        b1 = re_match2(re->left, str, start, end);
+        if (re->left->type == BOUND)
+            *start = *end;
+        
+        b2 = re_match2(re->right, str, start, end);
+        if (re->right->type== BOUND)
+            *end = *start;
+
+        if (!b1 || !b2)
+            return false;
+        else
+            return true;
+    }
+
+    return false;
+}
+
+void
+matchContext(wchar_t *T, regexNode re)
+{
+    int start, end, currPos;
+
+    int n;
+
+    currPos = start = end = 0;
+    n = wcslen(T);
+
+    while (currPos < n)
+    {
+        if (re_match2(re, T, &start, &end))
+        {
+            end--;
+            wprintf(L"匹配成功，识别边界为%d, %d\n", start, end);
+            return;
+        }
+        else
+        {
+            currPos++;
+            start = end = currPos;
+        }
+
+    }
+    wprintf(L"匹配失败\n");
+
+}
