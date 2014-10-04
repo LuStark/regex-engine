@@ -29,6 +29,7 @@ alloc_regexNode()
     regexNode   re;
     re = malloc(sizeof(*re));
     assert(re);
+    re->type = SIMPLE;
     
     return re;
 }
@@ -96,7 +97,7 @@ Recognition (Regex regex, wchar_t *str)
 
 /* 一旦成功匹配regex，立即返回下标位置，若匹配失败，则返回-1 */
 int
-greedy_match(regexNode re, wchar_t *str, int currPos)
+greedy_match (regexNode re, wchar_t *str, int currPos)
 {
     int i;
     int length = wcslen(str);
@@ -112,13 +113,14 @@ greedy_match(regexNode re, wchar_t *str, int currPos)
     while (*p)
     {
         i = re->T[i][*p];
-        if (i==-1)
-            return -1;
         if (i>=0 && isFinalStatus(Array_get(statusArray, i)))
           match = 1;
         /* 前移直到无法匹配为止 */
         if (match && i==-1)
           return p-str-currPos;
+
+        if (i==-1)
+          return -1;
         p++;
     }
 
@@ -225,7 +227,7 @@ matchContext(wchar_t *T, regexNode re)
 {
     int start, end, currPos;
 
-    int n;
+    int i, n;
 
     currPos = start = end = 0;
     n = wcslen(T);
@@ -234,16 +236,21 @@ matchContext(wchar_t *T, regexNode re)
     {
         if (re_match2(re, T, &start, &end))
         {
-            wprintf(L"匹配成功，识别边界为[%d, %d)\n", start, end);
-            return;
+            putwchar(L' ');
+            for (i=start; i<end; i++)
+              putwchar(*(T+i));
+            //wprintf(L"匹配成功，识别边界为[%d, %d)\n", start, end);
+            putwchar(L' ');
+            currPos = end;
         }
         else
         {
+            putwchar(*(T+currPos));
             currPos++;
             start = end = currPos;
         }
 
     }
-    wprintf(L"匹配失败\n");
+    //wprintf(L"匹配失败\n");
 
 }

@@ -26,10 +26,9 @@ void getRegex ()
     wchar_t c;
 
     i = 0;
-    while ((c=getwchar()) != EOF)
+    while ((c=getwchar()) != '\n')
         regex[i++] = c;
-    if (i>0 && regex[i-1]=='\n')
-        i--;
+    //if (i>0 && regex[i-1]=='\n') i--;
     regex[i++] = '$';
     regex[i] = '\0';
 }
@@ -43,8 +42,6 @@ wchar_t
     i = 0;
     while ((c=getwchar()) != EOF)
         buffer[i++] = c;
-    if (i>0 && buffer[i-1]=='\n')
-        i--;
     buffer[i] = '\0';
     T = malloc(sizeof(wchar_t)*i);
     assert(T);
@@ -380,9 +377,9 @@ regexNode   LL1_re_link_level()
         c = regex[currentIndex];
     }
 
-    construct_table(re);
     if (right_bound)
     {
+        construct_table(re);
         construct_table(post_re);
         op_re = alloc_regexNode();
         op_re->regex_op = '&';
@@ -393,6 +390,7 @@ regexNode   LL1_re_link_level()
 
     if (left_bound)
     {
+        construct_table(re);
         construct_table(pre_re);
 
         op_re = alloc_regexNode();
@@ -452,6 +450,23 @@ void cpy(char *pattern)
     exit(0);
 }
 
+void testRegex(char *testfile)
+{
+    wchar_t regex[150];
+
+    FILE    *f = fopen(testfile, "r");
+
+    /* 目前不支持空格,换行 */
+    while ((fwscanf(f, L"%ls", regex)!=EOF))
+    {
+        regex[wcslen(regex)] = '$';
+        regex[wcslen(regex)+1] = '\0';
+        
+        wprintf(L"%ls\n", regex);
+    }
+    fclose(f);
+
+}
 
 int main ()
 {
@@ -464,6 +479,7 @@ int main ()
 
     setlocale(LC_CTYPE, "");
 
+    //testRegex("testCase");
  
     init_FirstSet();
     init_FollowSet();
@@ -475,6 +491,7 @@ int main ()
 
     wprintf(L"输入正文:");
     T = getT();
+    wprintf(L"\n");
     //wchar_t *T = L"abcd";
 
     int start, end;
@@ -486,9 +503,6 @@ int main ()
     {
         wprintf(L"识别成功!\n");
     }
-    */
-    //print_Automaton(nfa);
-    /*
     dfa = Subset_Construct(re->nfa_buffer);
     print_Automaton(dfa);
 
@@ -501,3 +515,6 @@ int main ()
     */
     return 0;
 }
+
+
+
