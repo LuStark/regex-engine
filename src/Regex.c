@@ -104,6 +104,7 @@ greedy_match(regexNode re, wchar_t *str, int currPos)
     wchar_t     *p;
     bool        match;
 
+    match = false;
     p = str+currPos;
     i = 0;
     Array_T     statusArray = re->dfa->statusArray;
@@ -111,6 +112,8 @@ greedy_match(regexNode re, wchar_t *str, int currPos)
     while (*p)
     {
         i = re->T[i][*p];
+        if (i==-1)
+            return -1;
         if (i>=0 && isFinalStatus(Array_get(statusArray, i)))
           match = 1;
         /* 前移直到无法匹配为止 */
@@ -172,6 +175,7 @@ re_match2(regexNode re, wchar_t *str, int *start, int *end)
     int     b1, b2;
     int     s, e;
     int     len;
+    int     mid;
 
     if (!re)
       return false;
@@ -202,9 +206,10 @@ re_match2(regexNode re, wchar_t *str, int *start, int *end)
             *start = *end;
         if (!b1) return false;
         
+        mid = *end;
         b2 = re_match2(re->right, str, start, end);
         if (re->right->type== BOUND)
-            *end = *start;
+            *end = mid;
 
         if (!b2)
             return false;
