@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <wchar.h>
+#include <assert.h>
 #include "FirstFollow.h"
 #include "NFA.h"
 #include "Edge.h"
@@ -33,17 +34,38 @@ void getRegex ()
     regex[i] = '\0';
 }
 
+wchar_t
+*getT()
+{
+    int     i;
+    wchar_t c, *T, buffer[500];
+
+    i = 0;
+    while ((c=getwchar()) != EOF)
+        buffer[i++] = c;
+    if (i>0 && buffer[i-1]=='\n')
+        i--;
+    buffer[i] = '\0';
+    T = malloc(sizeof(wchar_t)*i);
+    assert(T);
+    wcscpy(T, buffer);
+
+    return T;
+
+}
+
+
 static void match (wchar_t obj)
 {
     if (LL1_finished_symbol==1)
         return;
     if (regex[currentIndex]==obj)
     {
-        wprintf (L"匹配 %lc\n", obj);
+        //wprintf (L"匹配 %lc\n", obj);
         currentIndex++;
         if (regex[currentIndex]=='$')
         {
-            wprintf (L"匹配完成.\n");
+            //wprintf (L"匹配完成.\n");
             LL1_finished_symbol = 1;
         }
     }
@@ -438,6 +460,7 @@ int main ()
     DFA         dfa;
     regexNode   re;
     wchar_t     str[100], pattern[100];
+    wchar_t     *T;
 
     setlocale(LC_CTYPE, "");
 
@@ -445,11 +468,14 @@ int main ()
     init_FirstSet();
     init_FollowSet();
     wprintf(L"输入正则表达式: ");
+    wprintf(L"\n");
     getRegex();
 
     re = LL1_regex();
 
-    wchar_t *T = L"abcd";
+    wprintf(L"输入正文:");
+    T = getT();
+    //wchar_t *T = L"abcd";
 
     int start, end;
     start = 0;

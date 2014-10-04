@@ -102,6 +102,7 @@ greedy_match(regexNode re, wchar_t *str, int currPos)
     int length = wcslen(str);
     wchar_t     c;
     wchar_t     *p;
+    bool        match;
 
     p = str+currPos;
     i = 0;
@@ -112,7 +113,12 @@ greedy_match(regexNode re, wchar_t *str, int currPos)
         else
           i = re->T[i][*p];
         if (isFinalStatus(Array_get(re->dfa->statusArray, i)))
-          return p-str-currPos+1;
+        {
+            match = 1;
+        }
+        /* 前移直到无法匹配为止 */
+        if (match && (!isFinalStatus(Array_get(re->dfa->statusArray, i)) || (*(p+1))=='\0'))
+            return p-str-currPos+1;
         p++;
     }
     return -1;
@@ -166,15 +172,12 @@ re_match2(regexNode re, wchar_t *str, int *start, int *end)
     int     s, e;
     int     len;
 
-    s = *start;
-    e = *end;
-
     if (!re)
       return false;
 
     if (!re->left && !re->right)
     {
-        len = greedy_match(re, str, *start);
+        len = greedy_match(re, str, *end);
         if (len==-1) return false;
         /* 否则就说明匹配re成功 */
         *end = *start + len;
@@ -196,12 +199,13 @@ re_match2(regexNode re, wchar_t *str, int *start, int *end)
         b1 = re_match2(re->left, str, start, end);
         if (re->left->type == BOUND)
             *start = *end;
+        if (!b1) return false;
         
         b2 = re_match2(re->right, str, start, end);
         if (re->right->type== BOUND)
             *end = *start;
 
-        if (!b1 || !b2)
+        if (!b2)
             return false;
         else
             return true;
@@ -224,8 +228,7 @@ matchContext(wchar_t *T, regexNode re)
     {
         if (re_match2(re, T, &start, &end))
         {
-            end--;
-            wprintf(L"匹配成功，识别边界为%d, %d\n", start, end);
+            wprintf(L"匹配成功，识别边界为[%d, %d)\n", start, end);
             return;
         }
         else
