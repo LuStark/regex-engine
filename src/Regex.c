@@ -106,21 +106,22 @@ greedy_match(regexNode re, wchar_t *str, int currPos)
 
     p = str+currPos;
     i = 0;
+    Array_T     statusArray = re->dfa->statusArray;
+
     while (*p)
     {
-        if (re->T[i][*p] == -1)
-          return -1;
-        else
-          i = re->T[i][*p];
-        if (isFinalStatus(Array_get(re->dfa->statusArray, i)))
-        {
-            match = 1;
-        }
+        i = re->T[i][*p];
+        if (i>=0 && isFinalStatus(Array_get(statusArray, i)))
+          match = 1;
         /* 前移直到无法匹配为止 */
-        if (match && (!isFinalStatus(Array_get(re->dfa->statusArray, i)) || (*(p+1))=='\0'))
-            return p-str-currPos+1;
+        if (match && i==-1)
+          return p-str-currPos;
         p++;
     }
+
+    if (match)
+      return p-str-currPos;
+
     return -1;
 }
 
