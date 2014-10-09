@@ -377,9 +377,9 @@ regexNode   LL1_re_link_level()
         c = regex[currentIndex];
     }
 
+    construct_table(re);
     if (right_bound)
     {
-        construct_table(re);
         construct_table(post_re);
         op_re = alloc_regexNode();
         op_re->regex_op = '&';
@@ -390,7 +390,6 @@ regexNode   LL1_re_link_level()
 
     if (left_bound)
     {
-        construct_table(re);
         construct_table(pre_re);
 
         op_re = alloc_regexNode();
@@ -515,6 +514,3 @@ int main ()
     */
     return 0;
 }
-
-
-
