@@ -7,5 +7,13 @@ regex-engine(demo)
      而且我相信只要能精简数据结构，以后可以更容易引入更多功能：
      例如：重复，匿名捕获，任意字符识别等等。
 
-3.  安装及使用
-![image](https://github.com/LuStark/regex-engine/img.png)
+3.  使用示例: 
+    1. 闭包 
+        输入正则表达式:  a* 
+        输入正文: vfdbvjekbnjwkaabrbaaaabrebe 
+        
+        显示输出: vfdbvjekbnjwk aa brb aaaa brebe 
+    
+    2. 正向预查 
+    
+    
