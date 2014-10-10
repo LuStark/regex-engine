@@ -17,7 +17,7 @@ regex-engine(demo)
     
     2. 正向预查  
         输入正则表达式:  Windows(?=7|8)  
-        输入正则表达式:  vvnrekbwnkjcxnvveancvehwvuirwehrrbgvWindowsvvujenvWindows7vavnkjWindows8?bnfl  
+        输入正文: vvnrekbwnkjcxnvveancvehwvuirwehrrbgvWindowsvvujenvWindows7vavnkjWindows8?bnfl  
         
         显示输出: vvnrekbwnkjcxnvveancvehwvuirwehrrbgvWindowsvvujenv Windows7 vavnkj Windows8 ?bnfl  
     
