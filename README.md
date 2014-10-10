@@ -8,6 +8,7 @@ regex-engine(demo)
      例如：重复，匿名捕获，任意字符识别等等。
 
 3.  使用示例:  
+    匹配部分前后用一个空格隔开  
     1. 闭包  
         输入正则表达式:  a*  
         输入正文: vfdbvjekbnjwkaabrbaaaabrebe  
@@ -15,5 +16,8 @@ regex-engine(demo)
         显示输出: vfdbvjekbnjwk aa brb aaaa brebe  
     
     2. 正向预查  
-    
+        输入正则表达式:  Windows(?=7|8)  
+        输入正则表达式:  vvnrekbwnkjcxnvveancvehwvuirwehrrbgvWindowsvvujenvWindows7vavnkjWindows8?bnfl  
+        
+        显示输出: vvnrekbwnkjcxnvveancvehwvuirwehrrbgvWindowsvvujenv Windows7 vavnkj Windows8 ?bnfl  
     
