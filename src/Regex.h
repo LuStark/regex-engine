@@ -7,20 +7,21 @@
 #include "DFA.h"
 
 typedef int     **DFATable;
+typedef int     **CapTable;
+
 typedef struct Regex    Regex, *regexNode;
 
 typedef enum NodeType{SIMPLE, OP, BOUND} NodeType;
 
 struct Regex {
+    char        *regex_str;
     DFATable    T;
-    NFA         nfa_buffer;
+    /* isCap is a 2d table where isCap[i][j] used to recognize whether 
+     * character j should be captured when it reach state i.
+     */
+    CapTable    isCap;
+    NFA         nfa;
     DFA         dfa;
-    char        name;
-    regexNode   left;
-    regexNode   right;
-    bool        yucha;
-    char        regex_op;
-    NodeType    type;
 };
 
 

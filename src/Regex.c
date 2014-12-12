@@ -2,7 +2,7 @@
 #include "NFA.h"
 #include "typedef.h"
 #include "automaton.h"
-#include "RegexLL1.h"
+#include "LL1.h"
 #include <assert.h>
 #include <stdlib.h>
 #include "FirstFollow.h"
@@ -19,7 +19,7 @@ init_Regex(regexNode re, DFA  dfa)
 void
 construct_table(regexNode re)
 {
-    re->dfa = Subset_Construct(re->nfa_buffer);
+    re->dfa = Subset_Construct(re->nfa);
     re->T   = makeUpDFATable(re->dfa);
 }
 
@@ -29,7 +29,6 @@ alloc_regexNode()
     regexNode   re;
     re = malloc(sizeof(*re));
     assert(re);
-    re->type = SIMPLE;
     
     return re;
 }
@@ -134,6 +133,7 @@ greedy_match (regexNode re, wchar_t *str, int currPos)
 regexNode
 re_compile(wchar_t *pattern)
 {
+    /*
     regexNode   re;
  
     NFA         nfa;
@@ -152,13 +152,14 @@ re_compile(wchar_t *pattern)
     currentIndex = 0;
 
     re  = LL1_regex();
-    re->dfa = Subset_Construct(re->nfa_buffer);
-    free_Automaton(re->nfa_buffer);
-    re->nfa_buffer = NULL;
+    re->dfa = Subset_Construct(re->nfa);
+    free_Automaton(re->nfa);
+    re->nfa = NULL;
 
     init_Regex(re, re->dfa);
 
     return re;
+    */
 }
 
 bool
@@ -173,6 +174,7 @@ re_match(Regex re, wchar_t *str)
 bool
 re_match2(regexNode re, wchar_t *str, int *start, int *end)
 {
+    /*
     char    op;
     int     b1, b2;
     int     s, e;
@@ -186,7 +188,6 @@ re_match2(regexNode re, wchar_t *str, int *start, int *end)
     {
         len = greedy_match(re, str, *end);
         if (len==-1) return false;
-        /* 否则就说明匹配re成功 */
         *end = *start + len;
         return true;
     }
@@ -202,7 +203,6 @@ re_match2(regexNode re, wchar_t *str, int *start, int *end)
     }
     else if (op == '&')
     {
-        /* 先匹配左边的正则表达式，再匹配右边的正则表达式 */
         b1 = re_match2(re->left, str, start, end);
         if (re->left->type == BOUND)
             *start = *end;
@@ -218,6 +218,7 @@ re_match2(regexNode re, wchar_t *str, int *start, int *end)
         else
             return true;
     }
+    */
 
     return false;
 }

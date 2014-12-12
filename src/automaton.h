@@ -15,7 +15,6 @@ typedef struct Automaton
     bool    yucha;
 }Automaton;
 
-
 extern  void     adjustStatusID  (Automaton*);
 extern  void     link_Two_Status_In_Automaton (Automaton*, int, int, int);
 extern  void     print_Automaton (Automaton*);

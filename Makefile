@@ -1,8 +1,8 @@
 VPATH = src
 
 objects=\
-	Array.o DFA.o Edge.o FirstFollow.o NFA.o RegexLL1.o Status.o StatusSet.o automaton.o\
-	Regex.o testRegex.o
+	Array.o DFA.o Edge.o FirstFollow.o NFA.o LL1.o Status.o StatusSet.o automaton.o\
+	Regex.o 
 
 regex-engine-test: $(objects)
 	gcc $(objects) -o regex-engine-test
@@ -18,7 +18,7 @@ FirstFollow.o:	FirstFollow.h
 
 NFA.o: NFA.h constant.h	typedef.h Array.h automaton.h Edge.h Status.h
 
-RegexLL1.o: FirstFollow.h NFA.h Edge.h Status.h StatusSet.h DFA.h RegexLL1.h
+LL1.o: FirstFollow.h NFA.h Edge.h Status.h StatusSet.h DFA.h LL1.h 
 
 Status.o: NFA.h constant.h typedef.h Array.h Status.h
 
@@ -28,7 +28,6 @@ automaton.o:	constant.h typedef.h automaton.h
 
 Regex.o:	Regex.h	NFA.h	typedef.h	FirstFollow.h automaton.h
 
-testRegex.o:    Regex.h
 
 clean:
 	rm $(objects)
