@@ -1,16 +1,27 @@
 
+regex -> pure-regex | extend-regex
 
-regex -> re_union_level    
+-----------------------------------------------------------------------------------------------
+pure-regex -> pure-regex-union
+pure-regex-union -> pure-regex-link { | pure-regex-link }
+pure-regex-link -> pure-regex-closure { pure-regex-closure }
+pure-regex-closure -> pure-regex-top { closure_op }1    #匹配一次
+pure-regex-top -> ( pure-regex ) | normal-character | escape_character | character_range
 
-re_union_level -> re_link_level { | re_link_level }
+-----------------------------------------------------------------------------------------------
 
-re_link_level -> re_closure_level { re_closure_level }
 
-re_closure_level -> re_top_level { closure_op }1    #匹配一次
+-----------------------------------------------------------------------------------------------
+extend-regex -> extend-regex-union
+extend-regex-union -> extend-regex-link { | extend-regex-link }
+extend-regex-link -> extend-regex-closure { extend-regex-closure }
+extend-regex-closure -> extend-regex-top { closure_op } 1
+extend-regex-top -> ( ? re_capture ) | ( ? re_yucha )
 
-re_top_level -> ( regex ) | non-special | escape_character | character_range | ( ? D regex)
+re_yucha -> = pure-regex | < = pure-regex
+re_capture -> pure-regex | # < exp_name > pure-regex
 
-D -> = | != | <= | :
+
 
 
 #关于First集合，上述文法规则有以下结论:
