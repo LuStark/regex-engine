@@ -1,25 +1,26 @@
 
-regex -> pure-regex | extend-regex
+regex -> regex-union
+regex-union -> regex-link { | regex-link }            #这里的中括号是指零次以上的重复
+regex-link  -> regex-closure { regex-closure }        #同上
 
------------------------------------------------------------------------------------------------
-pure-regex -> pure-regex-union
-pure-regex-union -> pure-regex-link { | pure-regex-link }
-pure-regex-link -> pure-regex-closure { pure-regex-closure }
-pure-regex-closure -> pure-regex-top { closure_op }1    #匹配一次
-pure-regex-top -> ( pure-regex ) | normal-character | escape_character | character_range
+regex-closure -> regex-top | regex-top * | regex-top + | regex-top ? | 
+                    regex-top { num } | regex-top { num , } | regex-top { num , num }
+                                                      #这里的中括号是指本身 
 
------------------------------------------------------------------------------------------------
+regex-top -> ( regex ) | normal-character | escape-character | character_range | ( ? extend-regex )
+
+extend-regex ->   < = regex  |  = regex  |  regex  |  # < string > regex
+string  ->  [A-Za-z]+ 
 
 
------------------------------------------------------------------------------------------------
-extend-regex -> extend-regex-union
-extend-regex-union -> extend-regex-link { | extend-regex-link }
-extend-regex-link -> extend-regex-closure { extend-regex-closure }
-extend-regex-closure -> extend-regex-top { closure_op } 1
-extend-regex-top -> ( ? re_capture ) | ( ? re_yucha )
+normal-character -> 匹配除了 \ + * ? [ ( ) | 的任意字符
+escape-character -> \ anychar
 
-re_yucha -> = pure-regex | < = pure-regex
-re_capture -> pure-regex | # < exp_name > pure-regex
+character_range ->  [ choose_or_not {range} ]       #一个可选集合里面可以包含一个到多个range
+choose_or_not   ->  ^ | ε
+range -> anychar { - anychar }1   #只匹配零次或者一次
+
+
 
 
 
