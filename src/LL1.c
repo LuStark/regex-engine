@@ -6,6 +6,9 @@ wchar_t regex[MAX];
 int  currentIndex= 0;
 int  LL1_finished_symbol = 0;
 
+typedef unsigned char firstSet;
+typedef unsigned char followSet;
+
 void getRegex ()
 {
     int i;
@@ -63,7 +66,226 @@ static int error (wchar_t funcName[], wchar_t c)
     exit (1);
 }
 
-regexNode   LL1_non_special_wchar_t()
+
+void cpy(char *pattern)
+{
+    printf("%s\n", pattern);
+    exit(0);
+}
+
+void testRegex(char *testfile)
+{
+    wchar_t regex[150];
+
+    FILE    *f = fopen(testfile, "r");
+
+    /* 目前不支持空格,换行 */
+    while ((fwscanf(f, L"%ls", regex)!=EOF))
+    {
+        regex[wcslen(regex)] = '$';
+        regex[wcslen(regex)+1] = '\0';
+        
+        wprintf(L"%ls\n", regex);
+    }
+    fclose(f);
+}
+
+
+
+regexNode   LL1_Regex()
+{
+    /* firstSet of this symbol is: all except
+       ) | + * ? 
+     * followSet:   $,)
+     */
+    wchar_t     c;
+    regexNode   r;
+
+    r = Regex_union();
+
+    return r;
+}
+
+regexNode   Regex_union() 
+{
+    wchar_t     c;
+    regexNode   re, re2;
+
+    re = Regex_link();
+    c = regex[currentIndex];
+    while (c == '|')
+    {
+        match (L'|');
+        re2 = Regex_link();
+
+        /* 需要明白的是，Union结束以后，re->nfa以及re2->nfa都会释放内存 */
+        re->nfa = Union(re->nfa, re2->nfa);
+        c = regex[currentIndex];
+    }
+    return re;
+}
+
+regexNode   Regex_link() 
+{
+    wchar_t     c;
+    NFA         nfa1, nfa2, nfa;
+    regexNode   re, re2;
+
+    re = Regex_closure();
+ 
+    c = regex[currentIndex];
+    while (First_Regex_closure[c] == 1)
+    {
+        re2 = Regex_closure();
+
+        nfa = Link(re->nfa, re2->nfa);
+        re -> nfa = nfa;
+
+        c = regex[currentIndex];
+    }
+    //construct_table(re);
+    return re;
+}
+
+regexNode   Regex_closure()
+{
+    wchar_t     c, op;
+    regexNode   r;
+    NFA         nfa, nfa2;
+    
+    r = Regex_top();
+    op = regex[currentIndex];
+    
+    if (op == '*')
+    {
+        match('*');
+        nfa2 = Closure(r->nfa);
+        r->nfa = nfa2;
+
+    }else if (op == '+'){
+        match('+');
+        nfa2 = Repeat_atleast_one(r->nfa);
+        r->nfa = nfa2;
+
+    }else if (op == '?'){
+        match('?');
+        nfa2 = Option(r->nfa);
+        r->nfa = nfa2;
+
+    }else if (op == '{'){
+        match('{');
+        int n, m;
+        n = Integer();
+
+        c = regex[currentIndex];
+        if (c == ',')
+        {
+            match(',');
+            c = regex[currentIndex];
+            if (c == '}')
+            {
+                match('}');
+            }else{
+                m = Integer();
+            }
+        }
+
+    }
+
+    return r;
+}
+
+int Integer()
+{
+    int     num, factor;
+    wchar_t c;
+    
+    num = 0;
+    factor = 1;
+    while (c>='0' && c<='9')
+    {
+        printf("匹配 %c\n", c);
+        currentIndex++;
+        num = factor*num + (c-'0');
+        factor *= 10;
+    }
+    return num; 
+}
+
+
+regexNode   Regex_top()
+{
+    regexNode r;
+    wchar_t c;
+
+    c = regex[currentIndex];
+    
+    if (First_normal_char[c] == 1)
+    {
+        r = normal_character();
+    }
+    else if (c == '(')
+    {
+        match ('(');
+        c = regex[currentIndex];
+        if (c=='?')
+        {
+            match ('?');
+            r = extend_regex();
+        }
+        else
+        {
+            r = LL1_Regex();
+        }
+        match (')');
+    }
+    else if (c == '\\')
+    {
+        r = escape_character();
+    }
+    else if (c == '[')
+    {
+        r = character_range();
+    }
+    else
+    {
+        error (L"regex_top()", c);
+    }
+
+    return r;
+}
+
+regexNode   extend_regex()
+{
+    wchar_t     c;
+    regexNode   r;
+
+    c = regex[currentIndex];
+
+    if (c == '<'){
+        match('<');
+        match('=');
+        LL1_Regex();
+
+    }else if (c == '='){
+        match('=');
+        LL1_Regex();        
+
+    }else if (c == '#'){
+        match('#');
+        match('<');
+        string();
+        match('>');
+        LL1_Regex();
+
+    }else if (First_extend_regex[c] == 1) {
+        LL1_Regex();
+    }
+
+    return r;
+}
+
+regexNode   normal_character()
 {
     wchar_t c;
     regexNode   r;
@@ -72,7 +294,7 @@ regexNode   LL1_non_special_wchar_t()
 
     c = regex[currentIndex];
     
-    if (First_non_special[c] == 1)
+    if (First_normal_char[c] == 1)
     {
         match (c);
         r->nfa = CreateSingleNFA (c);
@@ -83,7 +305,7 @@ regexNode   LL1_non_special_wchar_t()
     return r;
 }
 
-regexNode   LL1_escapecharacter()
+regexNode   escape_character()
 {
     wchar_t     c;
     regexNode   r;
@@ -102,25 +324,6 @@ regexNode   LL1_escapecharacter()
     return r;
 }
 
-regexNode   LL1_character()
-{
-    wchar_t     c;
-    regexNode   r;
-   
-    c = regex[currentIndex];
-    if (First_character[c]==1)
-    {
-        if (c=='\\')
-            r = LL1_escapecharacter();
-        else
-            r = LL1_non_special_wchar_t();
-    }
-    else
-        error (L"LL1_character()", c);
-
-    return r;
-}
-
 int LL1_choose_or_not()
 {
     wchar_t c;
@@ -135,7 +338,7 @@ int LL1_choose_or_not()
         error (L"LL1_character()", c);
 }
 
-Range LL1_range()
+Range range()
 {
     wchar_t c1, c2;
     Range   r;
@@ -168,12 +371,12 @@ Range LL1_range()
         }
     }
     else
-        error (L"LL1_range()", c1);
+        error (L"range()", c1);
 
     return r;
 }
 
-regexNode   LL1_character_range()
+regexNode   character_range()
 {
     wchar_t c;
     Range r, bufferRange[280];
@@ -200,7 +403,7 @@ regexNode   LL1_character_range()
     sizeBuffer = 0;
     while (First_range[c] == 1)
     {
-        r = LL1_range();
+        r = range();
         bufferRange[sizeBuffer++] =  r;
         
         c = regex[currentIndex];
@@ -209,7 +412,7 @@ regexNode   LL1_character_range()
     }
 
     for (i=0; i<sizeBuffer; i++)
-        addRange (e, bufferRange[i]);
+        addRange(e, bufferRange[i]);
 
     match (']');
 
@@ -220,183 +423,12 @@ regexNode   LL1_character_range()
     return re;
 }
 
-regexNode   LL1_re_boundary()
+char *string()
 {
-    wchar_t     c;
-    regexNode   re;
-
-    match('?');
-    c = regex[currentIndex];
-    if (c=='=')
-    {
-        match('=');
-        re = LL1_regex();
-    }
-    else if (c=='<')
-    {
-        match('<');
-        match('=');
-        re = LL1_regex();
-    }
-    else if (c=='!')
-    {
-        match('!');
-        match('=');
-        re = LL1_regex();
-    }
-    construct_table(re);    
-
-    return re;
 }
 
-regexNode   LL1_re_top_level()
-{
-    regexNode r;
-    wchar_t c;
 
-    c = regex[currentIndex];
-    
-    if (First_non_special[c] == 1)
-    {
-        r = LL1_non_special_wchar_t();
-    }
-    else if (c == '(')
-    {
-        match ('(');
-        c = regex[currentIndex];
-        if (c=='?')
-            r = LL1_re_boundary();
-        else
-            r = LL1_regex();
-        match (')');
-    }
-    else if (c == '\\')
-    {
-        r = LL1_escapecharacter();
-    }
-    else if (c == '[')
-    {
-        r = LL1_character_range();
-    }
-    else
-    {
-        error (L"re_top_level()", c);
-    }
 
-    return r;
-}
-
-wchar_t     LL1_closure_op()
-{
-    wchar_t c;
-    c = regex[currentIndex];
-
-    match (c);
-    return c;
-}
-
-regexNode   LL1_re_closure_level()
-{
-    wchar_t     c, op;
-    regexNode   r;
-    NFA         nfa, nfa2;
-    
-    r = LL1_re_top_level();
-    c   = regex[currentIndex];
-    if (First_closure_op[c] == 1)
-    {
-        op = LL1_closure_op();
-        if (op=='*')
-            nfa2 = Closure (r->nfa);
-        else if (op=='+')
-            nfa2 = Repeat_atleast_one(r->nfa);
-        else if (op=='?')
-            nfa2 = Option (r->nfa);
-        else
-            wprintf(L"无法识别的闭包运算符\n");
-        r->nfa = nfa2;
-    }
-
-    return r;
-}
-
-regexNode   LL1_re_link_level()
-{
-    wchar_t     c;
-    NFA         nfa1, nfa2, nfa;
-    regexNode   re, re2;
-
-    re = LL1_re_closure_level();
- 
-    c = regex[currentIndex];
-    while (First_re_closure_level[c] == 1)
-    {
-        re2 = LL1_re_closure_level();
-
-        nfa = Link(re->nfa, re2->nfa);
-        re -> nfa = nfa;
-
-        c = regex[currentIndex];
-    }
-
-    //construct_table(re);
-
-    return re;
-}
-
-regexNode   LL1_re_union_level()
-{
-    wchar_t     c;
-    regexNode   re, re2;
-
-    re = LL1_re_link_level();
-    c = regex[currentIndex];
-    while (c == '|')
-    {
-        match ('|');
-        re2 = LL1_re_link_level();
-
-        /* 需要明白的是，Union结束以后，re->nfa以及re2->nfa都会释放内存 */
-        re->nfa = Union(re->nfa, re2->nfa);
-        c = regex[currentIndex];
-    }
- 
-    return re;
-}
-
-regexNode   LL1_regex()
-{
-    wchar_t     c;
-    regexNode   r;
-
-    r = LL1_re_union_level();
-
-    return r;
-}
-
-void cpy(char *pattern)
-{
-    printf("%s\n", pattern);
-    exit(0);
-}
-
-void testRegex(char *testfile)
-{
-    wchar_t regex[150];
-
-    FILE    *f = fopen(testfile, "r");
-
-    /* 目前不支持空格,换行 */
-    while ((fwscanf(f, L"%ls", regex)!=EOF))
-    {
-        regex[wcslen(regex)] = '$';
-        regex[wcslen(regex)+1] = '\0';
-        
-        wprintf(L"%ls\n", regex);
-    }
-    fclose(f);
-
-}
 
 int main ()
 {
@@ -415,9 +447,9 @@ int main ()
     init_FollowSet();
     wprintf(L"输入正则表达式: ");
     wprintf(L"\n");
-    getRegex();
+    get_Regex();
 
-    re = LL1_regex();
+    re = LL1_Regex();
 
 
     /*

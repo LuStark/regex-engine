@@ -16,36 +16,36 @@
 /* for grammer non-special : select all the character as
  * the elements as its firstset,  except '\', '+', '*', '?'
  * '|', '[', and '(' */
-void init_FirstSet();
+void initFirstSet();
 
-extern int First_regex[];
-extern int First_re_union_level[];
-extern int First_re_link_level[];
-extern int First_re_closure_level[];
-extern int First_re_top_level[];
-extern int First_non_special[];
-extern int First_escape_character[];
-extern int First_character[];
-extern int First_character_range[];
+extern int First_Regex[];
+extern int First_Regex_union[];
+extern int First_Regex_link[];
+extern int First_Regex_closure[];
+extern int First_Regex_top[];
+extern int First_normal_char[];
+extern int First_escape_char[];
+extern int First_char_range[];
 extern int First_choose_or_not[];
 extern int First_range[];
-extern int First_closure_op[];
+extern int First_extend_regex[];
+extern int First_string[];
 
-void init_FollowSet();
+void initFollowSet();
 
-extern int Follow_regex[];
-extern int Follow_re_union_level[];
-extern int Follow_re_link_level[];
-extern int Follow_re_closure_level[];
-extern int Follow_re_top_level[];
-extern int Follow_non_special[];
-extern int Follow_escape_character[];
-extern int Follow_character[];
-extern int Follow_character_range[];
+extern int Follow_Regex[];
+extern int Follow_Regex_union[];
+extern int Follow_Regex_link[];
+extern int Follow_Regex_closure[];
+extern int Follow_Regex_top[];
+extern int Follow_normal_char[];
+extern int Follow_escape_char[];
+extern int Follow_char_range[];
 extern int Follow_choose_or_not[];
 extern int Follow_range[];
-extern int Follow_closure_op[];
+extern int Follow_extend_regex[];
+extern int Follow_string[];
 
 /* special-character: ?*+|([\. */
-    
+
 #endif
