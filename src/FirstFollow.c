@@ -69,9 +69,10 @@ void initFirstSet()
     First_range[']'] = 0;
     First_escape_char['\\']= 1;
     
+    First_string['>'] = 0;
 }
 
-void init_FollowSet()
+void initFollowSet()
 {
     int i;
 

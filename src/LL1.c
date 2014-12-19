@@ -425,6 +425,15 @@ regexNode   character_range()
 
 char *string()
 {
+    wchar_t c, buffer[MAXLEN_REGEXP];
+    
+    c = regex[currentIndex];
+    while (First_string[c] == 1)
+    {
+        match(c); 
+        c = regex[currentIndex];
+    }
+
 }
 
 
@@ -443,13 +452,13 @@ int main ()
 
     //testRegex("testCase");
  
-    init_FirstSet();
-    init_FollowSet();
+    initFirstSet();
+    initFollowSet();
     wprintf(L"输入正则表达式: ");
     wprintf(L"\n");
-    get_Regex();
+    getRegex();
 
-    re = LL1_Regex();
+    LL1_Regex();
 
 
     /*
