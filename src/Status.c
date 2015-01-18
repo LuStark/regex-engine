@@ -1,150 +1,97 @@
-#include "NFA.h"
-#include "constant.h"
-#include "typedef.h"
-#include "Array.h"
-#include "ArrayRep.h"
-#include <stdio.h>
-#include <stdlib.h>
-#include <wchar.h>
-#include <assert.h>
 #include "Status.h"
+#include "EdgeArray.h"
 
-#define S   Status
-typedef struct S *S;
+#include <stdlib.h>
+#include <stdio.h>
+#include <assert.h>
 
+typedef struct Status Status;
 
-struct S
+struct Status
 {
-    Array_T     InEdges;
-    Array_T     OutEdges;
+    EdgeArray   *InEdges;
+    EdgeArray   *OutEdges;
     bool        FinalStatus;
     int ID;
 };
 
-Array_T allocStatusArray(int n)
+void init_status(Status **s)
 {
-    int i;
-    Array_T statusArray;
-    S   s;
-
-
-    statusArray = Array_new (n, sizeof(struct S));
-    for (i=0; i<Array_length(statusArray); i++)
-    {
-        s = Array_get(statusArray, i);
-        s->ID = 0;
-        s->FinalStatus = false;
-        //s->InEdges = NULL;
-        //s->OutEdges = NULL;
-        s->InEdges = Array_new(0, sizeof(int));
-        s->OutEdges= Array_new(0, sizeof(int));
-    }
-    return statusArray;
+    assert(*s);
+    (*s) -> InEdges = create_edges_array(0);
+    (*s) -> OutEdges = create_edges_array(0);
 }
 
-void freeEdgesInStatus (S s)
+int size_of_status()
 {
-    if (s->InEdges)
-        Array_free (&s->InEdges);
-
-    if (s->OutEdges)
-        Array_free (&s->OutEdges);
-
-    s->InEdges = NULL;
-    s->OutEdges = NULL;
+    return sizeof(struct Status);
 }
 
-void clearEdges(S s)
+Status*
+create_Status ()
 {
-    s->InEdges = s->OutEdges = NULL;
-}
-
-int sizeOfStatus()
-{
-    return sizeof(struct S);
-}
-
-
-S    allocStatus ()
-{
-    S s;
-    s = malloc (sizeof (struct S));
+    Status *s;
+    s = malloc(sizeof(struct Status));
     assert(s);
-   
-    s->InEdges = Array_new (0, sizeof(int));
-    s->OutEdges = Array_new (0, sizeof(int));
+ 
+    s -> InEdges = create_edges_array(0);
+    s -> OutEdges = create_edges_array(0);
     return s;
 }
 
-void initInEdges(S s)
-{
-    assert(s);
-    s->InEdges = Array_new (0, sizeof(int));
-}
 
-void initOutEdges(S s)
-{
-    assert(s);
-    s->OutEdges = Array_new (0, sizeof(int));
-}
-
-int  getStatusID(S s)
+int  get_status_id(Status *s)
 {
     assert(s);
     return s->ID;
 }
 
-Array_T getInEdges(S s)
+EdgeArray* get_inEdges(Status *s)
 {
-    assert(s);
+    assert(s && s->InEdges);
     return s->InEdges;
 }
 
-Array_T getOutEdges(S s)
+EdgeArray* get_outEdges(Status *s)
 {
-    assert(s);
+    assert(s && s->OutEdges);
     return s->OutEdges;
 }
 
-void printStatus (S s)
-{
 
+void set_status_id (Status **s, int id)
+{
+    assert(*s);
+    (*s) -> ID = id;
 }
 
-void setStatusID (S s, int id)
+void set_as_final_status (Status **s)
 {
-    assert(s);
-    s->ID = id;
+    assert(*s);
+    (*s) -> FinalStatus = true;
 }
 
-void ensureFinalStatus (S s)
+void cancel_final_status (Status **s)
 {
-    assert(s);
-    s->FinalStatus = true;
+    assert(*s);
+    (*s) -> FinalStatus = false;
 }
 
-void cancelFinalStatus (S s)
+void append_inEdge (Status **s, Edge *e)
 {
-    assert(s);
-    s->FinalStatus = false;
+    assert((*s) && e);
+    append_edge(&((*s)->InEdges), e);
 }
 
-void appendInEdge (S s, int e)
+void append_outEdge (Status **s, Edge *e)
 {
-    assert(s);
-    Array_append (s->InEdges, &e); 
+    assert((*s) && e);
+    append_edge(&((*s) -> OutEdges), e);
 }
 
-void appendOutEdge (S s, int e)
-{
-    assert(s);
-    Array_append (s->OutEdges, &e);
-}
-
-bool  isFinalStatus (S s)
+bool is_final_status (Status *s)
 {
     assert(s);
     return s->FinalStatus;
 }
-
 

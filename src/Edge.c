@@ -1,7 +1,5 @@
-#include "NFA.h"
 #include "Edge.h"
-#include "constant.h"
-#include "typedef.h"
+#include "string.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <wchar.h>
@@ -9,6 +7,13 @@
 
 
 typedef unsigned long long int ULL64;
+
+typedef struct bitvector128 
+{
+    ULL64   L64;
+    ULL64   H64;
+}ULL128;
+
 
 void outputBinary (ULL64 a)
 {
@@ -38,137 +43,99 @@ Or (ULL128 b1, ULL128 b2)
 }
 
 
-#define E   Edge 
-typedef struct E *E;
+typedef struct Edge Edge; 
 
-struct E
+struct Edge
 {
     ULL128      crossTable;
     bool        is_match;
-    Status      from;
-    Status      to;
+    Status      *from;
+    Status      *to;
 
     bool        hasEpsilon;
-    Array_T     content;
-    bool        anymatch;
+    String      content;
 };
 
-ULL128   getMatchBitVector(E e)
+
+
+Edge*   create_edge ()
 {
-    assert(e);
-    return e->crossTable;
-}
-
-bool isEpsilon(E e)
-{
-    assert(e);
-    return e->hasEpsilon;
-}
-
-Array_T allocEdgeArray(int n)
-{
-    int i, j;
-    E   e;
-    Array_T edgeArray;
-
-    edgeArray = Array_new (n, sizeof(struct E));
-    
-    for (i=0; i<Array_length(edgeArray); i++)
-    {
-        e = Array_get(edgeArray, i);
-        e->from = e->to = NULL;
-        e->crossTable.L64 = 0L;
-        e->crossTable.H64 = 0L;
-        e->hasEpsilon   = false;
-        e->is_match     = true;
-        e->content      = Array_new(0, sizeof(wchar_t));
-    }
-    return edgeArray;
-}
-
-Array_T getEdgeContent(E e)
-{
-    assert(e->content);
-    return e->content;
-}
-
-void unreferenceStatus (E e)
-{
-    e->from=NULL;
-    e->to = NULL;
-}
-
-void clearBits(E e)
-{
-    assert(e);
-    e->crossTable.L64=0L;
-    e->crossTable.H64=0L;
-    e->is_match = true;
-    e->hasEpsilon = false;
-}
-
-int  sizeOfEdge()
-{
-    return sizeof(struct E);
-}
-
-void copyEdge_without_Status (E to, E from)
-{
-    to->crossTable = from->crossTable;
-    to->is_match = from->is_match;
-    to->hasEpsilon = from->hasEpsilon;
-}
-
-void outputEdgeCrossTable (E e)
-{
-    outputBinary (e->crossTable.H64);
-    outputBinary (e->crossTable.L64);
-    wprintf(L"\n");
-}
-
-
-void addCharacter (E e, wchar_t c)
-{
-    if (c >= 128)
-        wprintf(L"暂时不处理非ASCII码");
-    
-    if (c >= 64 )
-        e -> crossTable.H64 |= (1ULL << (c-64));
-    else
-        e -> crossTable.L64 |= (1ULL << c);
-
-    Array_append(e->content, &c);
-    
-}
-
-void setFromToStatus (E e, Status from, Status to)
-{
-    assert(e);
-
-    e->from = from;
-    e->to = to;
-}
-
-void clearStatus (E e)
-{
+    Edge *e = malloc(sizeof(struct Edge));
     assert (e);
-    e->from = e->to = NULL;
+    
+    e -> crossTable.L64 = 0L;
+    e -> crossTable.H64 = 0L;
+    e -> is_match   = true;
+    e -> content    = create_string(L""); 
+    return e;
+}
+
+Edge*   create_epsilon_edge ()
+{
+    Edge* e = create_edge ();
+    e -> hasEpsilon = true;
+
+    return e;
 }
 
 
-void addRange (E e, Range r)
+void init_edge(Edge **e)
+{
+    assert(*e);
+    setZero(&((*e)->crossTable));
+    (*e) -> from = NULL;
+    (*e) -> to = NULL;
+    (*e) -> content = create_string(L""); 
+    (*e) -> hasEpsilon = false;
+    (*e) -> is_match = false;
+}
+
+void free_edge(Edge **e)
+{
+    assert(*e);
+    if ((*e) -> content != NULL)
+        free_string(&((*e) -> content));
+    
+    (*e) -> from = NULL;
+    (*e) -> to   = NULL;
+
+    (*e) -> crossTable.L64 = 0L;
+    (*e) -> crossTable.H64 = 0L;
+    (*e) -> is_match = 1;
+    (*e) -> hasEpsilon = false;
+
+}
+
+void add_character (Edge **e, wchar_t c)
+{
+    assert(*e);
+    if (c >= 128)
+    {
+        push_back( &((*e) -> content), c);
+        wprintf(L"暂时不处理非ASCII码");
+    }
+
+    if (c >= 64 )
+        (*e) -> crossTable.H64 |= (1ULL << (c-64));
+    else
+        (*e) -> crossTable.L64 |= (1ULL << c);
+
+    push_back( &((*e) -> content), c);
+}
+
+void add_range(Edge **e, Range r)
 {
     wchar_t c1, c2, c;
     c1 = r.from; c2 = r.to;
-    if (c2<c1)
+    if (c2 < c1)
         return;
     int i;
 
     if (c1 < 64 && c2 >= 64)
     {
-        e -> crossTable.L64 = (~(1ULL<<c1)+1);
-        e -> crossTable.H64 = (1ULL<<(c2-64)-1);
-        e -> crossTable.H64 |= (1ULL<<(c2-64));
+        (*e) -> crossTable.L64 = (~(1ULL << c1) + 1);
+        (*e) -> crossTable.H64 = (1ULL << (c2 - 64) - 1);
+        (*e) -> crossTable.H64 |= (1ULL << (c2 - 64));
     }
     else
     {
@@ -176,76 +143,59 @@ void addRange (E e, Range r)
         {
             c1 -= 64;
             c2 -= 64;
-            e -> crossTable.H64 |= (1ULL<<c2)-(1ULL<<c1);
-            e -> crossTable.H64 |= (1ULL<<c2);
+            (*e) -> crossTable.H64 |= (1ULL<<c2)-(1ULL<<c1);
+            (*e) -> crossTable.H64 |= (1ULL<<c2);
         }
         else
         {
-            e -> crossTable.L64 |= (1ULL<<c2)-(1ULL<<c1);
-            e -> crossTable.L64 |= (1ULL<<c2);
+            (*e) -> crossTable.L64 |= (1ULL<<c2)-(1ULL<<c1);
+            (*e) -> crossTable.L64 |= (1ULL<<c2);
         }
     }
-    for (c=c1; c<=c2; c++)
-      Array_append(e->content, &c);
+    for (c = c1; c <= c2; c++)
+      push_back( &((*e)->content), c);
 }
 
-int crossEdge (E e, wchar_t c)
+bool is_matched_in_edge (Edge *e, wchar_t c)
 {
+    int i;
+
     if (c < 64)
-        return (e->crossTable.L64 & (1ULL<<c)) > 0;
-    else
+        return (e -> crossTable.L64 & (1ULL << c)) > 0;
+    else if (c < 128)
         return (e->crossTable.H64 & (1ULL<<c-64)) > 0;
+    else
+    {
+        for(i = 0; i < get_string_length(e -> content); i++)
+        {
+            if (c == getChar(e -> content, i))
+                return true;
+        }
+    }
+    return false;
 }
 
-E   allocEdge ()
-{   
-    E e = malloc (sizeof(struct E));
-    assert (e);
-    
-    e->crossTable.L64 = 0L;
-    e->crossTable.H64 = 0L;
-    e -> is_match   = true;
-    e -> content    = Array_new(0, sizeof(wchar_t));
-    return e;
-}
-
-E   allocEpsilonEdge ()
+void setMatchRangeOrNot (Edge **e, int c)
 {
-    E e = allocEdge ();
-    e -> hasEpsilon = true;
-    e->crossTable.L64 = 0L;
-    e->crossTable.H64 = 0L;
-    e -> is_match   = true;
-    e -> content    = Array_new(0, sizeof(wchar_t));
-
-    return e;
+    (*e) -> is_match = c;
 }
 
-void freeEdge(E e)
+void setFromToStatus(Edge **e, Status *from, Status *to)
 {
-    Array_free(&e->content);
-    e->from = e->to = NULL;    
-    e->crossTable.L64=0L;
-    e->crossTable.H64=0L;
-    e->is_match = 1;
-    e->hasEpsilon = false;
-    //free(e);
+    assert(*e);
+
+    (*e) -> from = from;
+    (*e) -> to = to;
 }
 
 
-void setEpsilon(E e)
+String getEdgeContent(Edge *e)
 {
-    assert(e);
-    e->hasEpsilon = true;
+    assert(e->content);
+    return e->content;
 }
 
-
-void setMatchRangeOrNot (E e, int c)
-{
-    e->is_match = c;
-}
-
-void printEdge (E e)
+void printEdge (Edge *e)
 {
     if (!e->is_match)
     {
@@ -278,19 +228,64 @@ void printEdge (E e)
     }
 }
 
-Status getfromStatus (E e)
+void copyEdge_without_Status (Edge* to, Edge* from)
 {
-    assert (e);
-    return e->from;
+    to -> crossTable = from -> crossTable;
+    to -> is_match   = from -> is_match;
+    to -> hasEpsilon = from -> hasEpsilon;
 }
 
-Status gettoStatus (E e)
+void unreferenceStatus (Edge **e)
+{
+    (*e) -> from = NULL;
+    (*e) -> to   = NULL;
+}
+
+int  size_of_edge()
+{
+    return sizeof(struct Edge);
+}
+
+Status *get_from_status(Edge *e)
 {
     assert (e);
+    return e -> from;
+}
+
+Status *get_to_status(Edge *e)
+{
+    assert(e);
     return e->to;
 }
 
+void set_epsilon(Edge **e)
+{
+    assert(*e);
+    (*e) -> hasEpsilon = true;
+}
 
-#undef E
+void output_edge_crossTable (Edge *e)
+{
+    outputBinary (e -> crossTable.H64);
+    outputBinary (e -> crossTable.L64);
+    wprintf(L"\n");
+}
+
+bool isEpsilon(Edge *e)
+{
+    assert(e);
+    return e -> hasEpsilon;
+}
 
 
+ULL128   getMatchBitVector(Edge *e)
+{
+    assert(e);
+    return e -> crossTable;
+}
+
+void clear_status (Edge **e)
+{
+    assert (*e);
+    (*e) -> from = (*e) -> to = NULL;
+}

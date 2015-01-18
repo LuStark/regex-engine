@@ -33,10 +33,8 @@ Regex_top();
 extern regexNode
 extend_regex();
 
-
 extern regexNode    normal_character();
 extern regexNode    escape_character();
-
 
 extern int          choose_or_not();
 extern Range        range();

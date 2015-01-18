@@ -6,8 +6,8 @@ wchar_t regex[MAX];
 int  currentIndex= 0;
 int  LL1_finished_symbol = 0;
 
-typedef unsigned char firstSet;
-typedef unsigned char followSet;
+//typedef unsigned char firstSet;
+//typedef unsigned char followSet;
 
 void getRegex ()
 {
@@ -37,7 +37,6 @@ wchar_t *getT()
     return T;
 
 }
-
 
 static void match (wchar_t obj)
 {
@@ -101,6 +100,8 @@ regexNode   LL1_Regex()
     wchar_t     c;
     regexNode   r;
 
+    c = regex[currentIndex];
+    //wprintf(L"%c\n", c);
     r = Regex_union();
 
     return r;
@@ -454,11 +455,19 @@ int main ()
  
     initFirstSet();
     initFollowSet();
-    wprintf(L"输入正则表达式: ");
-    wprintf(L"\n");
-    getRegex();
+    
+    while (1)
+    {
+        wprintf(L"输入正则表达式: ");
+        wprintf(L"\n");
+        getRegex();
+        wprintf(L"输入的内容是:%ls\n", regex);
+        wprintf(L"currentIndex = %d\n", currentIndex);
 
-    LL1_Regex();
+        LL1_Regex();
+        currentIndex = 0;
+        LL1_finished_symbol = 0;
+    }
 
 
     /*

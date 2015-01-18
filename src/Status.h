@@ -1,44 +1,30 @@
 #ifndef STATUS_INCLUEDED
 #define STATUS_INCLUEDED
 
-#include "typedef.h"
-#include "Array.h"
+#include <wchar.h>
+#include <stdbool.h>
 
-typedef struct Status *Status;
-#define S Status
+typedef struct EdgeArray    EdgeArray;
+typedef struct Status       Status;
+typedef struct Edge         Edge;
 
+extern Status*      create_status ();
+extern void         init_status(Status **s);
 
-#include "Edge.h"
+extern EdgeArray*   get_inEdges (Status*);
+extern EdgeArray*   get_outEdges (Status*);
 
-/* 产生一个状态点 */
-extern S    allocStatus ();
+extern int  get_status_id (Status*);
 
-extern Array_T allocStatusArray(int n);
-extern void outputStatus (S);
-// 调试专用函数
-extern S    nextStatus (S, wchar_t);
+extern void set_status_id (Status**, int);
+extern void set_as_final_status (Status**);
 
-extern void setStatusID (S s, int id);
+extern void cancel_final_status (Status**);
 
-extern Array_T getInEdges(S s);
-extern Array_T getOutEdges(S s);
+extern void append_inEdge (Status**, Edge*);
+extern void append_outEdge (Status**, Edge*);
 
-extern int  getStatusID (S s);
-extern void ensureFinalStatus (S s);
-extern void cancelFinalStatus (S s);
-extern void appendInEdge (S s, int e);
-extern void appendOutEdge (S s, int e);
+extern bool is_final_status (Status*);
+extern int  size_of_status();
 
-extern bool  isFinalStatus (S s);
-extern int sizeOfStatus();
-
-extern void initInEdges(S s);
-extern void initOutEdges(S s);
-extern void freeStatus(S s);
-
-extern void freeEdgesInStatus (S s);
-extern void clearEdges(S s);
-
-
-#undef S
 #endif
